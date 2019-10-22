@@ -6,13 +6,14 @@ namespace CodeGeneration.Roslyn.Generate
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Threading.Tasks;
     using CodeGeneration.Roslyn.Engine;
     using CodeGeneration.Roslyn.Tool.CommandLine;
     using Microsoft.CodeAnalysis;
 
     internal static class Program
     {
-        private static int Main(string[] args)
+        private static async Task<int> Main(string[] args)
         {
             IReadOnlyList<string> compile = Array.Empty<string>();
             IReadOnlyList<string> refs = Array.Empty<string>();
@@ -21,7 +22,7 @@ namespace CodeGeneration.Roslyn.Generate
             string generatedCompileItemFile = null;
             string outputDirectory = null;
             string projectDir = null;
-            bool version = false;
+            var version = false;
             ArgumentSyntax.Parse(args, syntax =>
             {
                 syntax.DefineOption("version", ref version, "Show version of this tool (and exits).");
@@ -41,13 +42,13 @@ namespace CodeGeneration.Roslyn.Generate
             }
             if (!compile.Any())
             {
-                Console.Error.WriteLine("No source files are specified.");
+                await Console.Error.WriteLineAsync("No source files are specified.");
                 return 1;
             }
 
             if (outputDirectory == null)
             {
-                Console.Error.WriteLine("The output directory must be specified.");
+                await Console.Error.WriteLineAsync("The output directory must be specified.");
                 return 2;
             }
 
@@ -65,12 +66,12 @@ namespace CodeGeneration.Roslyn.Generate
 
             try
             {
-                generator.Generate(progress);
+                await generator.GenerateAsync(progress);
             }
             catch (Exception e)
             {
-                Console.Error.WriteLine($"{e.GetType().Name}: {e.Message}");
-                Console.Error.WriteLine(e.ToString());
+                await Console.Error.WriteLineAsync($"{e.GetType().Name}: {e.Message}");
+                await Console.Error.WriteLineAsync(e.ToString());
                 return 3;
             }
 

@@ -65,7 +65,7 @@ namespace CodeGeneration.Roslyn.Engine
         public string IntermediateOutputDirectory { get; set; }
 
         /// <summary>
-        /// Gets the set of files generated after <see cref="Generate"/> is invoked.
+        /// Gets the set of files generated after <see cref="GenerateAsync"/> is invoked.
         /// </summary>
         public IEnumerable<string> GeneratedFiles => this.generatedFiles;
 
@@ -106,7 +106,7 @@ namespace CodeGeneration.Roslyn.Engine
         /// </summary>
         /// <param name="progress">Optional handler of diagnostics provided by code generator.</param>
         /// <param name="cancellationToken">Cancellation token to interrupt async operations.</param>
-        public void Generate(IProgress<Diagnostic> progress = null, CancellationToken cancellationToken = default)
+        public async Task GenerateAsync(IProgress<Diagnostic> progress = null, CancellationToken cancellationToken = default)
         {
             Verify.Operation(this.Compile != null, $"{nameof(Compile)} must be set first.");
             Verify.Operation(this.ReferencePath != null, $"{nameof(ReferencePath)} must be set first.");
@@ -142,14 +142,14 @@ namespace CodeGeneration.Roslyn.Engine
                         {
                             try
                             {
-                                var generatedSyntaxTree = DocumentTransform.TransformAsync(
+                                var generatedSyntaxTree = await DocumentTransform.TransformAsync(
                                     compilation,
                                     inputSyntaxTree,
                                     this.ProjectDirectory,
                                     this.LoadAssembly,
-                                    progress).GetAwaiter().GetResult();
+                                    progress).ConfigureAwait(false);
 
-                                var outputText = generatedSyntaxTree.GetText(cancellationToken);
+                                var outputText = await generatedSyntaxTree.GetTextAsync(cancellationToken);
                                 using (var outputFileStream = File.OpenWrite(outputFilePath))
                                 using (var outputWriter = new StreamWriter(outputFileStream))
                                 {
@@ -160,7 +160,8 @@ namespace CodeGeneration.Roslyn.Engine
                                     outputFileStream.SetLength(outputFileStream.Position);
                                 }
 
-                                bool anyTypesGenerated = generatedSyntaxTree?.GetRoot(cancellationToken).DescendantNodes().OfType<TypeDeclarationSyntax>().Any() ?? false;
+                                var root = await generatedSyntaxTree?.GetRootAsync(cancellationToken);
+                                var anyTypesGenerated = root?.DescendantNodes().OfType<TypeDeclarationSyntax>().Any() ?? false;
                                 if (!anyTypesGenerated)
                                 {
                                     this.emptyGeneratedFiles.Add(outputFilePath);
@@ -171,7 +172,7 @@ namespace CodeGeneration.Roslyn.Engine
                             catch (IOException ex) when (ex.HResult == ProcessCannotAccessFileHR && retriesLeft > 0)
                             {
                                 retriesLeft--;
-                                Task.Delay(200).Wait();
+                                await Task.Delay(200).ConfigureAwait(false);
                             }
                             catch (Exception ex)
                             {
