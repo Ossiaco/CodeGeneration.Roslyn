@@ -1,0 +1,3 @@
+[submodule "src/submodules/roslyn"]
+	path = src/submodules/roslyn
+	url = https://github.com/dotnet/roslyn.git
