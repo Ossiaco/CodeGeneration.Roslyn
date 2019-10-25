@@ -15,6 +15,14 @@
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
   </PropertyGroup>
 
+  <PropertyGroup Label="SourceLink Override">
+    <PublishRepositoryUrl>false</PublishRepositoryUrl>
+    <EmbedUntrackedSources>false</EmbedUntrackedSources>
+    <IncludeSymbols>false</IncludeSymbols>
+    <IncludeSymbols>false</IncludeSymbols>
+  </PropertyGroup>
+
+
   <ItemGroup>
     <None Include="build/**">
       <Pack>true</Pack>
