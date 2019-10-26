@@ -1,4 +1,4 @@
-﻿namespace Chorus.CodeGenerator
+﻿namespace CodeGeneration.Chorus
 {
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;

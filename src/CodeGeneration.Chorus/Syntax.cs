@@ -2,11 +2,12 @@
 // Copyright (c) Ossiaco Inc.  All rights reserved.
 //------------------------------------------------------------
 
-namespace Chorus.CodeGenerator
+namespace CodeGeneration.Chorus
 {
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
+    using Microsoft.CodeAnalysis.Editing;
     using Microsoft.CodeAnalysis.PooledObjects;
     using Microsoft.CodeAnalysis.Text;
     using System;
@@ -22,6 +23,8 @@ namespace Chorus.CodeGenerator
     /// </summary>
     internal static class Syntax
     {
+        internal static SyntaxGenerator Generator = SyntaxGenerator.GetGenerator(new AdhocWorkspace(), LanguageNames.CSharp);
+
         internal static MethodDeclarationSyntax AddNewKeyword(MethodDeclarationSyntax method)
         {
             return method.WithModifiers(method.Modifiers.Insert(0, Token(SyntaxKind.NewKeyword)));

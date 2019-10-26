@@ -1,5 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  
+
   <Import Project="..\CodeGeneration.Roslyn.BuildTime\build\CodeGeneration.Roslyn.BuildTime.props" />
 
   <PropertyGroup>
@@ -25,7 +25,15 @@
       <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
       <UndefineProperties>TargetFramework</UndefineProperties>
     </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup Condition=" !$(UseRoslynSource) ">
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="[$(RoslynNugetVersion)]" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" $(UseRoslynSource) ">
     <ProjectReference Include="..\submodules\roslyn\src\Workspaces\Core\Portable\Microsoft.CodeAnalysis.Workspaces.csproj" />
+    <ProjectReference Include="..\submodules\roslyn\src\Workspaces\CSharp\Portable\Microsoft.CodeAnalysis.CSharp.Workspaces.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,5 +41,5 @@
   </ItemGroup>
 
   <Import Project="..\CodeGeneration.Roslyn.BuildTime\build\CodeGeneration.Roslyn.BuildTime.targets" />
-  
+
 </Project>

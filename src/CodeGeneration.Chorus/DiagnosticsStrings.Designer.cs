@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Chorus.CodeGenerator {
+namespace CodeGeneration.Chorus {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace Chorus.CodeGenerator {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Chorus.CodeGenerator.DiagnosticsStrings", typeof(DiagnosticsStrings).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("CodeGeneration.Chorus.DiagnosticsStrings", typeof(DiagnosticsStrings).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

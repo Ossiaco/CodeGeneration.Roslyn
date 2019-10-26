@@ -20,6 +20,7 @@
     <PackageOutputPath>$(MSBuildThisFileDirectory)../bin/Packages/$(Configuration)/</PackageOutputPath>
     <IsTestingOnlyProject>$(MSBuildProjectName.Contains('Test'))</IsTestingOnlyProject>
     <RoslynNugetVersion>3.3.1</RoslynNugetVersion>
+    <UseRoslynSource>false</UseRoslynSource>
   </PropertyGroup>
 
   <PropertyGroup Condition=" !$(IsTestingOnlyProject) ">

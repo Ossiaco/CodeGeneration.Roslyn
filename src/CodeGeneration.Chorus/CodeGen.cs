@@ -1,4 +1,4 @@
-﻿namespace Chorus.CodeGenerator
+﻿namespace CodeGeneration.Chorus
 {
     using System;
     using System.Collections.Generic;
@@ -15,7 +15,7 @@
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using Microsoft.CodeAnalysis.Text;
 
-    public partial class CodeGen
+    internal partial class CodeGen
     {
         private static readonly IdentifierNameSyntax DefaultInstanceFieldName = SyntaxFactory.IdentifierName("DefaultInstance");
         private static readonly SyntaxToken NoneToken = SyntaxFactory.Token(SyntaxKind.None);

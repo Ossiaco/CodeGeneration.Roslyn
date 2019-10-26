@@ -1,10 +1,10 @@
-﻿namespace Chorus.CodeGenerator
+﻿namespace CodeGeneration.Chorus
 {
     using System;
     using System.Collections.Immutable;
     using Microsoft.CodeAnalysis;
 
-    public class CodeGenOptions
+    internal class CodeGenOptions
     {
         private readonly ImmutableDictionary<string, TypedConstant> _data;
         public CodeGenOptions()

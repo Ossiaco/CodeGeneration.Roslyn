@@ -2,7 +2,7 @@
 // Copyright (c) Ossiaco Inc. All rights reserved.
 //------------------------------------------------------------
 
-namespace Chorus.CodeGenerator
+namespace CodeGeneration.Chorus
 {
     using System;
 

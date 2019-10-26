@@ -1,4 +1,4 @@
-﻿namespace Chorus.CodeGenerator
+﻿namespace CodeGeneration.Chorus
 {
     using System;
     using System.Diagnostics;

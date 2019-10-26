@@ -1,13 +1,35 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <CodeAnalysisRuleSet>.\CodeGeneration.Chorus.ruleset</CodeAnalysisRuleSet>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <NullableContextOptions>enable</NullableContextOptions>
+    <Nullable>enable</Nullable>
+    <IsTestReference>True</IsTestReference>
+    <AssemblyName>CodeGeneration.Chorus.Tests</AssemblyName>
+    <RootNamespace>CodeGeneration.Chorus.Tests</RootNamespace>
+    <CodeAnalysisRuleSet>.\CodeGeneration.Chorus.Tests.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="TestSources\IBooleanType.cs" />
+    <Compile Remove="TestSources\IByteType.cs" />
+    <Compile Remove="TestSources\IDateTimeOffsetType.cs" />
+    <Compile Remove="TestSources\IDecimalType.cs" />
+    <Compile Remove="TestSources\IDoubleType.cs" />
+    <Compile Remove="TestSources\IGuidType.cs" />
+    <Compile Remove="TestSources\IInt16Type.cs" />
+    <Compile Remove="TestSources\IInt32Type.cs" />
+    <Compile Remove="TestSources\IInt64Type.cs" />
+    <Compile Remove="TestSources\IResource.cs" />
+    <Compile Remove="TestSources\IResource2.cs" />
+    <Compile Remove="TestSources\IResource3.cs" />
+    <Compile Remove="TestSources\ISingleType.cs" />
+    <Compile Remove="TestSources\IStringType.cs" />
+    <Compile Remove="TestSources\IUint16Type.cs" />
+    <Compile Remove="TestSources\IUint32Type.cs" />
+    <Compile Remove="TestSources\IUint64Type.cs" />
+    <Compile Remove="TestSources\IUriType.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\EnumerableExtensions.cs" Link="Roslyn\Utilities\EnumerableExtensions.cs" />
@@ -32,42 +54,88 @@
     <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\Collections\ImmutableArrayExtensions.cs" Link="Roslyn\Collections\ImmutableArrayExtensions.cs" />
     <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\Debug.cs" Link="Roslyn\Utilities\Debug.cs" />
     <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\ExceptionUtilities.cs" Link="Roslyn\Utilities\ExceptionUtilities.cs" />
-    <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\Symbols\TypeCompareKind.cs" Link="Roslyn\Symbols\TypeCompareKind.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.6.0" />
+    <PackageReference Include="Microsoft.Build" Version="16.3.0" />
+    <PackageReference Include="Xunit" Version="2.4.1" />
+    <PackageReference Include="Xunit.runner.visualstudio" Version="2.4.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.3.0" />
     <PackageReference Include="CG.Pluralization" Version="0.3000.12" PrivateAssets="none" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.0.0" />
-    <PackageReference Include="Microsoft.VisualStudio.Validation" Version="15.5.31" />
-    <PackageReference Include="System.Text.Json" Version="4.7.0-rc1.19455.5" />
+    <PackageReference Include="System.Runtime.Serialization.Formatters" Version="4.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Testing" Version="3.0.0-rc2.19463.5" PrivateAssets="None" />
   </ItemGroup>
 
-
-  <Import Project="..\submodules\roslyn\src\Dependencies\PooledObjects\Microsoft.CodeAnalysis.PooledObjects.projitems" Label="Shared" />
-  <Import Project="..\submodules\roslyn\src\Compilers\Core\AnalyzerDriver\AnalyzerDriver.projitems" Label="Shared" />
-  <Import Project="..\submodules\roslyn\src\Compilers\CSharp\CSharpAnalyzerDriver\CSharpAnalyzerDriver.projitems" Label="Shared" />
-  <Import Project="..\submodules\roslyn\src\Dependencies\CodeAnalysis.Debugging\Microsoft.CodeAnalysis.Debugging.projitems" Label="Shared" />
+  <ItemGroup>
+    <EmbeddedResource Include="TestSources\IBooleanType.cs" />
+    <EmbeddedResource Include="TestSources\IByteType.cs" />
+    <EmbeddedResource Include="TestSources\IDateTimeOffsetType.cs" />
+    <EmbeddedResource Include="TestSources\IDecimalType.cs" />
+    <EmbeddedResource Include="TestSources\IDoubleType.cs" />
+    <EmbeddedResource Include="TestSources\IGuidType.cs" />
+    <EmbeddedResource Include="TestSources\IInt16Type.cs" />
+    <EmbeddedResource Include="TestSources\IInt32Type.cs" />
+    <EmbeddedResource Include="TestSources\IInt64Type.cs" />
+    <EmbeddedResource Include="TestSources\IResource3.cs" />
+    <EmbeddedResource Include="TestSources\IResource2.cs" />
+    <EmbeddedResource Include="TestSources\IResource.cs" />
+    <EmbeddedResource Include="TestSources\ISingleType.cs" />
+    <EmbeddedResource Include="TestSources\IStringType.cs" />
+    <EmbeddedResource Include="TestSources\IUint16Type.cs" />
+    <EmbeddedResource Include="TestSources\IUint32Type.cs" />
+    <EmbeddedResource Include="TestSources\IUint64Type.cs" />
+    <EmbeddedResource Include="TestSources\IUriType.cs" />
+  </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CodeGeneration.Roslyn\CodeGeneration.Roslyn.csproj" />
+    <ProjectReference Include="..\CodeGeneration.Chorus\CodeGeneration.Chorus.csproj" />
+    <ProjectReference Include="..\CodeGeneration.Roslyn.Engine\CodeGeneration.Roslyn.Engine.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition=" !$(UseRoslynSource) ">
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="[$(RoslynNugetVersion)]" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[$(RoslynNugetVersion)]" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="[$(RoslynNugetVersion)]" />
   </ItemGroup>
 
   <ItemGroup Condition=" $(UseRoslynSource) ">
+    <ProjectReference Include="..\submodules\roslyn\src\Compilers\Core\Portable\Microsoft.CodeAnalysis.csproj" />
     <ProjectReference Include="..\submodules\roslyn\src\Compilers\CSharp\Portable\Microsoft.CodeAnalysis.CSharp.csproj" />
-    <ProjectReference Include="..\submodules\roslyn\src\Workspaces\Core\Portable\Microsoft.CodeAnalysis.Workspaces.csproj" />
     <ProjectReference Include="..\submodules\roslyn\src\Workspaces\CSharp\Portable\Microsoft.CodeAnalysis.CSharp.Workspaces.csproj" />
   </ItemGroup>
 
 
+
   <ItemGroup>
+    <Folder Include="NewFolder\" />
     <Folder Include="Roslyn\Collections\" />
-    <Folder Include="Roslyn\Symbols\" />
     <Folder Include="Roslyn\Utilities\" />
+  </ItemGroup>
+
+  <Import Project="..\submodules\roslyn\src\Compilers\CSharp\CSharpAnalyzerDriver\CSharpAnalyzerDriver.projitems" Label="Shared" />
+
+  <Import Project="..\submodules\roslyn\src\Dependencies\PooledObjects\Microsoft.CodeAnalysis.PooledObjects.projitems" Label="Shared" />
+
+  <Import Project="..\submodules\roslyn\src\Compilers\Core\AnalyzerDriver\AnalyzerDriver.projitems" Label="Shared" />
+
+  <ItemGroup>
+    <AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.LegacyThreadSwitchingMembers.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.MainThreadSwitchingMethods.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.MainThreadAssertingMethods.txt" />
   </ItemGroup>
 
 

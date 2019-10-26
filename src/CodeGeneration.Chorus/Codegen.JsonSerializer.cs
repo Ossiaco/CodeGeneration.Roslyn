@@ -1,11 +1,11 @@
-﻿namespace Chorus.CodeGenerator
+﻿namespace CodeGeneration.Chorus
 {
     using System.Collections.Generic;
     using System.Linq;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-    public partial class CodeGen
+    internal partial class CodeGen
     {
         private static readonly IdentifierNameSyntax _jsonBufferWriterParameterName = SyntaxFactory.IdentifierName("buffer");
         private static readonly IdentifierNameSyntax _jsonWriterParameterName = SyntaxFactory.IdentifierName("writer");

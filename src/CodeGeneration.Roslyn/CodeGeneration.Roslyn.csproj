@@ -7,6 +7,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CodeGeneration.Roslyn.Attributes\CodeGeneration.Roslyn.Attributes.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" !$(UseRoslynSource) ">
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[$(RoslynNugetVersion)]" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" $(UseRoslynSource) ">
     <ProjectReference Include="..\submodules\roslyn\src\Compilers\CSharp\Portable\Microsoft.CodeAnalysis.CSharp.csproj" />
   </ItemGroup>
 

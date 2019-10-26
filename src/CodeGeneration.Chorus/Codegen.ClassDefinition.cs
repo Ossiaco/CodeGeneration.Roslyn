@@ -1,4 +1,4 @@
-﻿namespace Chorus.CodeGenerator
+﻿namespace CodeGeneration.Chorus
 {
     using System.Collections.Generic;
     using System.Linq;
@@ -7,21 +7,25 @@
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-    public partial class CodeGen
+    internal partial class CodeGen
     {
         private FieldDeclarationSyntax CreateConstMember(TypedConstant constant, string name)
         {
             var syntax = constant.Type.GetFullyQualifiedSymbolName(NullableAnnotation.None);
-            return FieldDeclaration(
-            VariableDeclaration(syntax)
-                .AddVariables(
-                    VariableDeclarator(Identifier(name.ToUpperInvariant()))
-                    .WithInitializer(
-                        EqualsValueClause(
-                            LiteralExpression(syntax.Kind(), Literal(constant.Value))))))
-            .AddModifiers(
-                    Token(SyntaxKind.PublicKeyword),
-                    Token(SyntaxKind.ConstKeyword));
+            var value = Syntax.Generator.TypedConstantExpression(constant);
+            if (value is LiteralExpressionSyntax expr)
+            {
+                return FieldDeclaration(
+                VariableDeclaration(syntax)
+                    .AddVariables(
+                        VariableDeclarator(Identifier(name.ToUpperInvariant()))
+                        .WithInitializer(
+                            EqualsValueClause(expr))))
+                .AddModifiers(
+                        Token(SyntaxKind.PublicKeyword),
+                        Token(SyntaxKind.ConstKeyword));
+            }
+            throw new System.NotSupportedException();
         }
 
         private IEnumerable<MemberDeclarationSyntax> CreateClassDeclaration()
@@ -53,7 +57,7 @@
                 .Where(a => a.value.Value != default)
                 .ToList();
 
-
+            innerMembers.AddRange(inheritedMembers.Select(v => CreateConstMember(v.value, v.field)));
             innerMembers.AddRange(CreateJsonCtor(isDerived));
             innerMembers.AddRange(CreatePublicCtor(isDerived));
 
