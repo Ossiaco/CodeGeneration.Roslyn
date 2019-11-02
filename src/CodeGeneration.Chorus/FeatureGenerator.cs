@@ -7,17 +7,15 @@
 
     internal abstract class FeatureGenerator
     {
-        protected readonly CodeGen _generator;
         protected readonly List<MemberDeclarationSyntax> _innerMembers = new List<MemberDeclarationSyntax>();
         protected readonly List<MemberDeclarationSyntax> _siblingMembers = new List<MemberDeclarationSyntax>();
         protected readonly List<BaseTypeSyntax> _baseTypes = new List<BaseTypeSyntax>();
         protected readonly List<StatementSyntax> _additionalCtorStatements = new List<StatementSyntax>();
         protected readonly MetaType _applyTo;
 
-        protected FeatureGenerator(CodeGen generator)
+        protected FeatureGenerator(MetaType applyTo)
         {
-            _generator = generator;
-            _applyTo = generator.InterfaceMetaType;
+            _applyTo = applyTo;
         }
 
         public abstract bool IsApplicable { get; }

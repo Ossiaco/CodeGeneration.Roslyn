@@ -15,6 +15,14 @@ namespace CodeGeneration.Roslyn.Generate
     {
         private static async Task<int> Main(string[] args)
         {
+            if(args.Length == 1)
+            {
+                if (File.Exists(args[0]))
+                {
+                    using var f = File.OpenText(args[0]);
+                    args = (await f.ReadToEndAsync()).Split(Environment.NewLine);
+                }
+            }
             IReadOnlyList<string> compile = Array.Empty<string>();
             IReadOnlyList<string> refs = Array.Empty<string>();
             IReadOnlyList<string> preprocessorSymbols = Array.Empty<string>();

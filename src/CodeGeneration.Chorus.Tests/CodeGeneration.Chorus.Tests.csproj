@@ -50,6 +50,20 @@
     <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Set.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Set.cs" />
     <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Singleton.Collection`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Singleton.Collection`1.cs" />
     <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Singleton.Enumerator`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Singleton.Enumerator`1.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Argument.cs" Link="CommandLine\Argument.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentCommand.cs" Link="CommandLine\ArgumentCommand.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentCommand_1.cs" Link="CommandLine\ArgumentCommand_1.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentLexer.cs" Link="CommandLine\ArgumentLexer.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentList_1.cs" Link="CommandLine\ArgumentList_1.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentParser.cs" Link="CommandLine\ArgumentParser.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentSyntax.cs" Link="CommandLine\ArgumentSyntax.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentSyntaxException.cs" Link="CommandLine\ArgumentSyntaxException.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentSyntax_Definers.cs" Link="CommandLine\ArgumentSyntax_Definers.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentToken.cs" Link="CommandLine\ArgumentToken.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Argument_1.cs" Link="CommandLine\Argument_1.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Enumerable.cs" Link="CommandLine\Enumerable.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\HelpTextGenerator.cs" Link="CommandLine\HelpTextGenerator.cs" />
+    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Strings.Designer.cs" Link="CommandLine\Strings.Designer.cs" />
     <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\Collections\ArrayBuilderExtensions.cs" Link="Roslyn\Collections\ArrayBuilderExtensions.cs" />
     <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\Collections\ImmutableArrayExtensions.cs" Link="Roslyn\Collections\ImmutableArrayExtensions.cs" />
     <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\Debug.cs" Link="Roslyn\Utilities\Debug.cs" />
@@ -71,6 +85,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Strings.resx" Link="CommandLine\Strings.resx" />
     <EmbeddedResource Include="TestSources\IBooleanType.cs" />
     <EmbeddedResource Include="TestSources\IByteType.cs" />
     <EmbeddedResource Include="TestSources\IDateTimeOffsetType.cs" />
@@ -111,6 +126,7 @@
 
 
   <ItemGroup>
+    <Folder Include="CommandLine\xlf\" />
     <Folder Include="NewFolder\" />
     <Folder Include="Roslyn\Collections\" />
     <Folder Include="Roslyn\Utilities\" />

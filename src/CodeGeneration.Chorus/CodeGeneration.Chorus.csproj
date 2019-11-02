@@ -49,6 +49,7 @@
   <Import Project="..\submodules\roslyn\src\Dependencies\CodeAnalysis.Debugging\Microsoft.CodeAnalysis.Debugging.projitems" Label="Shared" />
 
   <ItemGroup>
+    <ProjectReference Include="..\CodeGeneration.Chorus.Attributes\CodeGeneration.Chorus.Attributes.csproj" />
     <ProjectReference Include="..\CodeGeneration.Roslyn\CodeGeneration.Roslyn.csproj" />
   </ItemGroup>
 
@@ -68,6 +69,23 @@
     <Folder Include="Roslyn\Collections\" />
     <Folder Include="Roslyn\Symbols\" />
     <Folder Include="Roslyn\Utilities\" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Compile Update="DiagnosticStrings.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>DiagnosticStrings.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <EmbeddedResource Update="DiagnosticStrings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>DiagnosticStrings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
 
 

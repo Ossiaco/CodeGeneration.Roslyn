@@ -5,10 +5,6 @@
     <Description>A package that offers libraries for creating a code generation attribute and the associated generator.</Description>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\CodeGeneration.Roslyn.Attributes\CodeGeneration.Roslyn.Attributes.csproj" />
-  </ItemGroup>
-
   <ItemGroup Condition=" !$(UseRoslynSource) ">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[$(RoslynNugetVersion)]" />
   </ItemGroup>

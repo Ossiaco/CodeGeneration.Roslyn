@@ -7,7 +7,7 @@
 
     internal class StyleCopCompliance : FeatureGenerator
     {
-        public StyleCopCompliance(CodeGen generator) : base(generator)
+        public StyleCopCompliance(MetaType applyTo) : base(applyTo)
         {
         }
 

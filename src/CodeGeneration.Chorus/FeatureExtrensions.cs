@@ -15,9 +15,8 @@
                 .Where(ctor => !ctor.Modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword))).Single();
         }
 
-        public static bool IsFieldRequired(this IFieldSymbol fieldSymbol) => fieldSymbol.NullableAnnotation == NullableAnnotation.None;
-        public static bool IsPropertyRequired(this IPropertySymbol fieldSymbol) => fieldSymbol.NullableAnnotation == NullableAnnotation.None;
-        public static bool IsPropertyNullable(this IPropertySymbol fieldSymbol) => fieldSymbol.NullableAnnotation == NullableAnnotation.None;
+        public static bool IsPropertyRequired(this IPropertySymbol propertySymbol) => propertySymbol.NullableAnnotation == NullableAnnotation.NotAnnotated;
+        public static bool IsPropertyNullable(this IPropertySymbol propertySymbol) => propertySymbol.NullableAnnotation == NullableAnnotation.Annotated;
 
         public static int GetFieldGeneration(this IFieldSymbol fieldSymbol)
         {
@@ -153,7 +152,7 @@
             }
 
             TypeSyntax result = parent != null ? (NameSyntax)SyntaxFactory.QualifiedName(parent, leafName) : leafName;
-            return typeSymbol?.TypeKind == TypeKind.Class && nullableAnnotation == NullableAnnotation.Annotated ? SyntaxFactory.NullableType(result) : result;
+            return nullableAnnotation == NullableAnnotation.Annotated && (typeSymbol?.IsReferenceType ?? false) ? SyntaxFactory.NullableType(result) : result;
         }
 
         public static SyntaxToken[] GetModifiersForAccessibility(this INamedTypeSymbol template)

@@ -45,6 +45,19 @@ namespace CodeGeneration.Chorus
             yield return SimpleBaseType(ParseName(value.Identifier.ValueText));
         }
 
+        internal static IEnumerable<BaseTypeSyntax> AsFullyQualifiedBaseType(this SemanticModel model, TypeDeclarationSyntax value)
+        {
+            if (value.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
+            {
+                var typeSymbol = ((INamedTypeSymbol)model.GetTypeInfo(nameSyntax).Type);
+                SimpleNameSyntax leafName = IdentifierName(typeSymbol.Name.Substring(1));
+                TypeSyntax typeSyntax = (typeSymbol.ContainingSymbol as INamespaceOrTypeSymbol)?.GetFullyQualifiedSymbolName(NullableAnnotation.None) is NameSyntax parent ? (NameSyntax)QualifiedName(parent, leafName) : leafName;
+                yield return SimpleBaseType(typeSyntax);
+            }
+            yield return SimpleBaseType(ParseName(value.Identifier.ValueText));
+        }
+
+
         internal static ExpressionSyntax BaseDot(SimpleNameSyntax memberAccess)
         {
             return MemberAccessExpression(
@@ -57,54 +70,6 @@ namespace CodeGeneration.Chorus
         {
             return expressions.Aggregate((ExpressionSyntax)null, (agg, e) => agg != null ? BinaryExpression(binaryOperator, agg, e) : e);
         }
-
-        // internal static ParameterSyntax Optional(ParameterSyntax parameter)
-        // {
-        //    return parameter
-        //        .WithType(OptionalOf(parameter.Type))
-        //        .WithDefault(SyntaxFactory.EqualsValueClause(SyntaxFactory.DefaultExpression(OptionalOf(parameter.Type))));
-        // }
-
-        // internal static NameSyntax OptionalOf(TypeSyntax type)
-        // {
-        //    return SyntaxFactory.QualifiedName(
-        //        SyntaxFactory.IdentifierName(nameof(ImmutableObjectGraph)),
-        //        SyntaxFactory.GenericName(SyntaxFactory.Identifier(nameof(Optional)), SyntaxFactory.TypeArgumentList(SyntaxFactory.SingletonSeparatedList(type))));
-        // }
-
-        // internal static MemberAccessExpressionSyntax OptionalIsDefined(ExpressionSyntax optionalOfTExpression)
-        // {
-        //    return SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, optionalOfTExpression, SyntaxFactory.IdentifierName(nameof(ImmutableObjectGraph.Optional<int>.IsDefined)));
-        // }
-
-        // internal static InvocationExpressionSyntax OptionalGetValueOrDefault(ExpressionSyntax optionalOfTExpression, ExpressionSyntax defaultValue)
-        // {
-        //    return SyntaxFactory.InvocationExpression(
-        //        SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, optionalOfTExpression, SyntaxFactory.IdentifierName(nameof(ImmutableObjectGraph.Optional<int>.GetValueOrDefault))),
-        //        SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Argument(defaultValue))));
-        // }
-
-        // internal static MemberAccessExpressionSyntax OptionalValue(ExpressionSyntax optionalOfTExpression)
-        // {
-        //    return SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, optionalOfTExpression, SyntaxFactory.IdentifierName(nameof(ImmutableObjectGraph.Optional<int>.Value)));
-        // }
-
-        // internal static ExpressionSyntax OptionalFor(ExpressionSyntax expression)
-        // {
-        //    return SyntaxFactory.InvocationExpression(
-        //        SyntaxFactory.MemberAccessExpression(
-        //            SyntaxKind.SimpleMemberAccessExpression,
-        //            SyntaxFactory.QualifiedName(
-        //                SyntaxFactory.IdentifierName(nameof(ImmutableObjectGraph)),
-        //                SyntaxFactory.IdentifierName(nameof(ImmutableObjectGraph.Optional))),
-        //            SyntaxFactory.IdentifierName(nameof(ImmutableObjectGraph.Optional.For))),
-        //        SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Argument(expression))));
-        // }
-
-        // internal static ExpressionSyntax OptionalForIf(ExpressionSyntax expression, bool isOptional)
-        // {
-        //    return isOptional ? OptionalFor(expression) : expression;
-        // }
 
         internal static IdentifierNameSyntax ClassName(this InterfaceDeclarationSyntax value) => IdentifierName(Identifier(value.Identifier.ValueText.Substring(1)));
 

@@ -8,7 +8,7 @@ namespace CodeGeneration.Chorus
     using System.Diagnostics;
 
     /// <summary>
-    /// Defines the JsonStringEnumFormat
+    /// Defines the JsonStringEnumFormat.
     /// </summary>
     public enum JsonStringEnumFormat
     {
@@ -23,13 +23,13 @@ namespace CodeGeneration.Chorus
         LowerCase,
 
         /// <summary>
-        /// Defines the CamelCase
+        /// Defines the CamelCase.
         /// </summary>
-        CamelCase
+        CamelCase,
     }
 
     /// <summary>
-    /// Defines the <see cref="JsonStringEnumAttribute" />
+    /// Defines the <see cref="JsonStringEnumAttribute" />.
     /// </summary>
     [AttributeUsage(AttributeTargets.Enum)]
     [Conditional("CodeGeneration")]
@@ -38,14 +38,14 @@ namespace CodeGeneration.Chorus
         /// <summary>
         /// Initializes a new instance of the <see cref="JsonStringEnumAttribute"/> class.
         /// </summary>
-        /// <param name="format">The format<see cref="JsonStringEnumFormat"/></param>
+        /// <param name="format">The format<see cref="JsonStringEnumFormat"/>.</param>
         public JsonStringEnumAttribute(JsonStringEnumFormat format = JsonStringEnumFormat.Default)
         {
             Format = format;
         }
 
         /// <summary>
-        /// Gets the Format
+        /// Gets the Format.
         /// </summary>
         public JsonStringEnumFormat Format { get; }
     }

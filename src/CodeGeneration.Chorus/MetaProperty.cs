@@ -7,7 +7,9 @@
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using System.Text.Json.Serialization;
+    using System.Diagnostics;
 
+    [DebuggerDisplay("{Symbol?.Name}")]
     internal struct MetaProperty
     {
         private readonly MetaType metaType;
@@ -43,11 +45,10 @@
                 var jsonAttribute = Symbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass.IsOrDerivesFrom<JsonPropertyNameAttribute>());
                 if (jsonAttribute != null)
                 {
-                    var name = jsonAttribute.ConstructorArguments[0].ToCSharpString();
-                    return name;
+                    return jsonAttribute.ConstructorArguments[0].ToCSharpString();
                 }
-                // Verify.Operation(!IsDefault, "Default instance.");
-                return Symbol.Name.ToCamelCase();
+                return $"\"{Symbol.Name.ToCamelCase()}\"";
+
             }
         }
 
@@ -61,43 +62,20 @@
         }
 
         public ITypeSymbol Type => Symbol?.Type;
+        public ITypeSymbol SafeType => GetSafePropertyType(Symbol?.Type);
 
         public TypeSyntax TypeSyntax => _typeSyntax ?? (_typeSyntax = Type.GetFullyQualifiedSymbolName(Symbol.NullableAnnotation));
 
-        public bool IsGeneratedImmutableType => !TypeAsGeneratedImmutable.IsDefault;
-
-        public MetaType TypeAsGeneratedImmutable
-        {
-            get
-            {
-                return Type.IsAttributeApplied<GenerateClassAttribute>()
-                    ? new MetaType(metaType.Generator, (INamedTypeSymbol)Type)
-                    : default;
-            }
-        }
-
+        public bool IsAbstract => Name == metaType.AbstractJsonProperty;
         public bool IsRequired => Symbol.IsPropertyRequired();
         public bool IsNullable => Symbol.IsPropertyNullable();
         public bool IsReadonly => Symbol == null || Symbol.IsPropertyReadonly();
         public bool IsIgnored => Symbol.IsPropertyIgnored();
-
-        public int Generation => Symbol.GetPropertyGeneration();
-
+        public bool HasSetMethod => Symbol.SetMethod != null;
         public bool IsCollection => IsCollectionType(Symbol.Type);
-
         public bool IsDictionary => IsDictionaryType(Symbol.Type);
-
         public string TypeName => GetSafeTypeName(Symbol.Type);
-
-        public MetaType DeclaringType
-        {
-            get { return new MetaType(metaType.Generator, Symbol.ContainingType); }
-        }
-
-        public bool IsRecursiveCollection
-        {
-            get { return IsCollection && !DeclaringType.RecursiveType.IsDefault && SymbolEqualityComparer.Default.Equals(ElementType, DeclaringType.RecursiveType.TypeSymbol); }
-        }
+        public string TypeClassName => GetSafeTypeClassName(GetSafePropertyType(Symbol.Type));
 
         public bool IsDefinitelyNotRecursive => Symbol.IsAttributeApplied<NotRecursiveAttribute>();
 
@@ -138,14 +116,14 @@
                 || type.Interfaces.Any(i => that.IsAssignableFrom(i));
         }
 
-        // public PropertyDeclarationSyntax DedfaultPropertyDeclarationSyntax(TypedConstant defaultValue)
-        // {
-        //    return SyntaxFactory.PropertyDeclaration(TypeSyntax, NameAsProperty.Identifier)
-        //            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
-        //            .AddAccessorListAccessors(
-        //                SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-        //                    .WithExpressionBody(SyntaxFactory.ArrowExpressionClause(thisDotChildren))));
-        // }
+        public PropertyDeclarationSyntax ArrowPropertyDeclarationSyntax(ExpressionSyntax valueSyntax)
+        {
+            return SyntaxFactory.PropertyDeclaration(TypeSyntax, NameAsProperty.Identifier)
+                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                    .WithExpressionBody(SyntaxFactory.ArrowExpressionClause(SyntaxFactory.Token(SyntaxKind.EqualsGreaterThanToken), valueSyntax))
+                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+        }
+
         public PropertyDeclarationSyntax PropertyDeclarationSyntax
         {
             get
@@ -248,6 +226,25 @@
             return type.Name;
         }
 
+        private static string GetSafeTypeClassName(ITypeSymbol t) => t.TypeKind == TypeKind.Interface ? t.Name.Substring(1) : t.Name;
+
+        private static ITypeSymbol GetSafePropertyType(ITypeSymbol type)
+        {
+            if (type is INamedTypeSymbol namedType)
+            {
+                if (namedType.IsGenericType && namedType.TypeArguments.Length == 1)
+                {
+                    return namedType.TypeArguments[0];
+                }
+            }
+            if (type is IArrayTypeSymbol arrayTypeSymbol)
+            {
+                return arrayTypeSymbol.ElementType;
+            }
+
+            return type;
+        }
+
 
         private static INamedTypeSymbol GetDictionaryType(ITypeSymbol type)
         {
@@ -270,6 +267,39 @@
         private static bool IsCollectionType(ITypeSymbol type) => GetCollectionType(type) != null;
 
         private static bool IsDictionaryType(ITypeSymbol type) => GetDictionaryType(type) != null;
+
+        public static IEqualityComparer<MetaProperty> DefaultComparer = new Comparer();
+        public static IEqualityComparer<MetaProperty> DefaultNameTypeComparer = new NameTypeComparer();
+
+        private class Comparer : IEqualityComparer<MetaProperty>
+        {
+            public bool Equals(MetaProperty x, MetaProperty y)
+            {
+                return x.Symbol.Equals(y.Symbol);
+            }
+
+            public int GetHashCode(MetaProperty obj)
+            {
+                return obj.Symbol.GetHashCode();
+            }
+        }
+
+        private class NameTypeComparer : IEqualityComparer<MetaProperty>
+        {
+            public bool Equals(MetaProperty x, MetaProperty y)
+            {
+                return x.Symbol.Name.Equals(y.Symbol.Name) && x.Symbol.Type.Equals(y.Symbol.Type);
+            }
+
+            public int GetHashCode(MetaProperty obj)
+            {
+                unchecked
+                {
+                    return 17 * (23 + obj.Symbol.Name.GetHashCode()) * (23 + obj.Symbol.Type.GetHashCode());
+                }
+            }
+        }
+
     }
 
 }

@@ -115,10 +115,10 @@ namespace CodeGeneration.Roslyn.Engine
 
             var compilation = this.CreateCompilation(cancellationToken);
 
-            string generatorAssemblyInputsFile = Path.Combine(this.IntermediateOutputDirectory, InputAssembliesIntermediateOutputFileName);
+            var generatorAssemblyInputsFile = Path.Combine(this.IntermediateOutputDirectory, InputAssembliesIntermediateOutputFileName);
 
             // For incremental build, we want to consider the input->output files as well as the assemblies involved in code generation.
-            DateTime assembliesLastModified = GetLastModifiedAssemblyTime(generatorAssemblyInputsFile);
+            var assembliesLastModified = GetLastModifiedAssemblyTime(generatorAssemblyInputsFile);
 
             var fileFailures = new List<Exception>();
 
@@ -128,16 +128,16 @@ namespace CodeGeneration.Roslyn.Engine
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    string sourceHash = Convert.ToBase64String(hasher.ComputeHash(Encoding.UTF8.GetBytes(inputSyntaxTree.FilePath)), 0, 6).Replace('/', '-');
+                    var sourceHash = Convert.ToBase64String(hasher.ComputeHash(Encoding.UTF8.GetBytes(inputSyntaxTree.FilePath)), 0, 6).Replace('/', '-');
                     Logger.Info($"File \"{inputSyntaxTree.FilePath}\" hashed to {sourceHash}");
-                    string outputFilePath = Path.Combine(this.IntermediateOutputDirectory, Path.GetFileNameWithoutExtension(inputSyntaxTree.FilePath) + $".{sourceHash}.generated.cs");
+                    var outputFilePath = Path.Combine(this.IntermediateOutputDirectory, Path.GetFileNameWithoutExtension(inputSyntaxTree.FilePath) + $".{sourceHash}.generated.cs");
 
                     // Code generation is relatively fast, but it's not free.
                     // So skip files that haven't changed since we last generated them.
-                    DateTime outputLastModified = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
+                    var outputLastModified = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
                     if (File.GetLastWriteTime(inputSyntaxTree.FilePath) > outputLastModified || assembliesLastModified > outputLastModified)
                     {
-                        int retriesLeft = 3;
+                        var retriesLeft = 3;
                         do
                         {
                             try
@@ -146,7 +146,6 @@ namespace CodeGeneration.Roslyn.Engine
                                     compilation,
                                     inputSyntaxTree,
                                     this.ProjectDirectory,
-                                    this.LoadAssembly,
                                     progress).ConfigureAwait(false);
 
                                 var outputText = await generatedSyntaxTree.GetTextAsync(cancellationToken);
@@ -156,7 +155,7 @@ namespace CodeGeneration.Roslyn.Engine
                                     outputText.Write(outputWriter);
 
                                     // Truncate any data that may be beyond this point if the file existed previously.
-                                    outputWriter.Flush();
+                                    await outputWriter.FlushAsync();
                                     outputFileStream.SetLength(outputFileStream.Position);
                                 }
 
@@ -326,7 +325,7 @@ namespace CodeGeneration.Roslyn.Engine
                                      where AllowedAssemblyExtensions.Contains(Path.GetExtension(file))
                                      select file;
 
-            string matchingRefAssembly = matchingRefAssemblies.Concat(matchingAssemblies).FirstOrDefault();
+            var matchingRefAssembly = matchingRefAssemblies.Concat(matchingAssemblies).FirstOrDefault();
             if (matchingRefAssembly != null)
             {
                 this.loadedAssemblies.Add(matchingRefAssembly);

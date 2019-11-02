@@ -12,6 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CodeGeneration.Chorus.Attributes\CodeGeneration.Chorus.Attributes.csproj" />
+    <ProjectReference Include="..\CodeGeneration.Chorus\CodeGeneration.Chorus.csproj" />
     <ProjectReference Include="..\CodeGeneration.Roslyn\CodeGeneration.Roslyn.csproj" />
   </ItemGroup>
 

@@ -1,11 +1,10 @@
 ﻿namespace CodeGeneration.Chorus
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Collections.Immutable;
-    using System.Data.Entity.Design.PluralizationServices;
     using System.Diagnostics;
-    using System.Globalization;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
@@ -13,12 +12,12 @@
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
-    using Microsoft.CodeAnalysis.Text;
 
-    internal partial class CodeGen
+    internal static partial class CodeGen
     {
         private static readonly IdentifierNameSyntax DefaultInstanceFieldName = SyntaxFactory.IdentifierName("DefaultInstance");
         private static readonly SyntaxToken NoneToken = SyntaxFactory.Token(SyntaxKind.None);
+        private static readonly SyntaxToken NullToken = SyntaxFactory.Token(SyntaxKind.NullKeyword);
         private static readonly SyntaxToken DotToken = SyntaxFactory.Token(SyntaxKind.DotToken);
         private static readonly IdentifierNameSyntax varType = SyntaxFactory.IdentifierName("var");
         private static readonly IdentifierNameSyntax WithMethodName = SyntaxFactory.IdentifierName("With");
@@ -36,54 +35,162 @@
         private static readonly AttributeSyntax ObsoletePublicCtor = SyntaxFactory.Attribute(Syntax.GetTypeSyntax(typeof(ObsoleteAttribute))).AddArgumentListArguments(SyntaxFactory.AttributeArgument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal("This constructor for use with json deserializers only. Use the static Create factory method instead."))));
         private static ImmutableHashSet<INamedTypeSymbol> CheckedTypes = ImmutableHashSet<INamedTypeSymbol>.Empty;
 
-        private readonly InterfaceDeclarationSyntax _interfaceDeclaration;
-        internal SemanticModel SemanticModel { get; }
-        private readonly IProgress<Diagnostic> _progress;
-        private readonly CodeGenOptions _options;
-        private readonly CancellationToken _cancellationToken;
+        internal static ImmutableDictionary<INamedTypeSymbol, MetaType> AllNamedTypeSymbols { get; private set; }
+        internal static ImmutableHashSet<INamedTypeSymbol> IntrinsicSymbols { get; private set; }
 
-        private ImmutableArray<DeclarationInfo> inputDeclarations;
-        internal MetaType InterfaceMetaType { get; private set; }
-        private readonly TransformationContext _context;
-        private IdentifierNameSyntax _applyToTypeName;
-
-        private CodeGen(InterfaceDeclarationSyntax applyFrom, TransformationContext context, IProgress<Diagnostic> progress, CodeGenOptions options, CancellationToken cancellationToken)
+        private async static Task<ImmutableDictionary<INamedTypeSymbol, MetaType>> GetAllTypeDefinitionsAsync(CSharpCompilation compilation)
         {
-            ////Requires.NotNull(applyTo, nameof(applyTo));
-            ////Requires.NotNull(semanticModel, nameof(semanticModel));
-            ////Requires.NotNull(progress, nameof(progress));
+            var result = new ConcurrentDictionary<INamedTypeSymbol, MetaType>(SymbolEqualityComparer.Default);
 
-            _context = context;
-            _interfaceDeclaration = applyFrom;
-            SemanticModel = context.SemanticModel;
-            _progress = progress;
-            _options = options ?? new CodeGenOptions();
-            _cancellationToken = cancellationToken;
+            async Task TryAdd(INamedTypeSymbol typeSymbol)
+            {
+                var syntax = await typeSymbol.DeclaringSyntaxReferences[0].GetSyntaxAsync();
+                var inputSemanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
+                result.TryAdd(typeSymbol, new MetaType(typeSymbol, syntax as BaseTypeDeclarationSyntax, inputSemanticModel));
+            }
 
-            PluralService = PluralizationService.CreateService(new CultureInfo("en-US"));
+            await Task.WhenAll(GetAllTypeSymbolsVisitor.Execute(compilation).Select(TryAdd));
+            return result.ToImmutableDictionary(SymbolEqualityComparer.Default);
         }
 
-        public PluralizationService PluralService { get; set; }
-
-
-        public static async Task<RichGenerationResult> GenerateAsync(InterfaceDeclarationSyntax applyTo, TransformationContext context, IProgress<Diagnostic> progress, CodeGenOptions options, CancellationToken cancellationToken)
+        private static ImmutableHashSet<INamedTypeSymbol> GetIntrinsicSymbols(CSharpCompilation compilation)
         {
-            ////Requires.NotNull(applyTo, nameof(applyTo));
-            ////Requires.NotNull(semanticModel, nameof(semanticModel));
-            ////Requires.NotNull(progress, nameof(progress));
+            var types = new[] { typeof(byte),
+                typeof(short), typeof(ushort),
+                typeof(int), typeof(uint),
+                typeof(long), typeof(ulong),
+                typeof(decimal), typeof(double), typeof(float),
+                typeof(string), typeof(Guid), typeof(Uri),
+                typeof(DateTimeOffset)
+            };
+            var values = types.Select(t => compilation.GetTypeByMetadataName(t.FullName)).ToList();
+            return values.ToImmutableHashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        }
 
-            // Ensure code gets generated only once per definition
-            var typeSymbol = context.SemanticModel.GetDeclaredSymbol(applyTo);
-            if (typeSymbol != null)
+        public static async Task<RichGenerationResult> GenerateFromInterfaceAsync(InterfaceDeclarationSyntax applyTo, TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        {
+            try
             {
-                var key = typeSymbol.OriginalDefinition ?? typeSymbol;
-                if (TryAdd(ref CheckedTypes, key))
+                if (AllNamedTypeSymbols == null)
                 {
-                    var instance = new CodeGen(applyTo, context, progress, options, cancellationToken);
-                    return await instance.GenerateAsync();
+                    AllNamedTypeSymbols = await GetAllTypeDefinitionsAsync(context.Compilation);
+                }
+
+                if (IntrinsicSymbols == null)
+                {
+                    IntrinsicSymbols = GetIntrinsicSymbols(context.Compilation);
+                }
+
+                // Ensure code gets generated only once per definition
+                var typeSymbol = context.SemanticModel.GetDeclaredSymbol(applyTo);
+                if (typeSymbol != null)
+                {
+                    var key = typeSymbol.OriginalDefinition ?? typeSymbol;
+                    if (TryAdd(ref CheckedTypes, key))
+                    {
+                        if (AllNamedTypeSymbols.TryGetValue(typeSymbol, out var metaType))
+                        {
+                            var result = await GenerateClassForInterfaceAsync(metaType, cancellationToken).ConfigureAwait(false);
+                            result = await GenerateDependenciesAsync(metaType, result, progress, cancellationToken);
+
+                            var tasks = AllNamedTypeSymbols.Values.Where(to => IsAssignableFrom(key, to.TypeSymbol)).Select(to => GenerateAsync(to, progress, cancellationToken));
+                            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+                            foreach (var r in results)
+                            {
+                                result.AttributeLists = result.AttributeLists.AddRange(r.AttributeLists);
+                                result.Usings = result.Usings.AddRange(r.Usings);
+                                result.Externs = result.Externs.AddRange(r.Externs);
+                                result.Members = result.Members.AddRange(r.Members);
+                            }
+                            return result;
+                        }
+                    }
                 }
             }
+            catch (Exception e)
+            {
+                progress.Report(Diagnostic.Create(UnexpectedDescriptor, applyTo.GetLocation(), e.Message));
+
+            }
             return new RichGenerationResult();
+        }
+
+        private static DiagnosticDescriptor NotSupportedDescriptor => new DiagnosticDescriptor("OCC001",
+                    new LocalizableResourceString(nameof(DiagnosticStrings.OCC001), DiagnosticStrings.ResourceManager, typeof(DiagnosticStrings)),
+                    new LocalizableResourceString(nameof(DiagnosticStrings.OCC001), DiagnosticStrings.ResourceManager, typeof(DiagnosticStrings)),
+                    "Design", DiagnosticSeverity.Warning, isEnabledByDefault: true);
+
+        private static DiagnosticDescriptor UnexpectedDescriptor => new DiagnosticDescriptor("OCC002",
+                    new LocalizableResourceString(nameof(DiagnosticStrings.OCC002), DiagnosticStrings.ResourceManager, typeof(DiagnosticStrings)),
+                    new LocalizableResourceString(nameof(DiagnosticStrings.OCC002), DiagnosticStrings.ResourceManager, typeof(DiagnosticStrings)),
+                    "Design", DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+        private static async Task<RichGenerationResult> GenerateAsync(MetaType metaType, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        {
+            try
+            {
+                if (!metaType.IsDefault)
+                {
+                    var key = metaType.TypeSymbol.OriginalDefinition ?? metaType.TypeSymbol;
+                    if (TryAdd(ref CheckedTypes, key))
+                    {
+                        switch (key.TypeKind)
+                        {
+                            case TypeKind.Interface:
+                                var result = await GenerateClassForInterfaceAsync(metaType, cancellationToken).ConfigureAwait(false);
+                                return await GenerateDependenciesAsync(metaType, result, progress, cancellationToken).ConfigureAwait(false);
+                            case TypeKind.Enum:
+                                return GenerateSerializerForEnum(metaType, cancellationToken);
+                            default:
+                                progress.Report(Diagnostic.Create(NotSupportedDescriptor, metaType.DeclarationSyntax.GetLocation(), key.TypeKind, key.Name));
+                                break;
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                progress.Report(Diagnostic.Create(UnexpectedDescriptor, metaType.DeclarationSyntax?.GetLocation() ?? Location.None, e.Message));
+
+            }
+            return new RichGenerationResult();
+        }
+
+        private static async Task<RichGenerationResult> GenerateDependenciesAsync(MetaType metaType, RichGenerationResult result, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        {
+            var allProperties = await metaType.GetLocalPropertiesAsync();
+            var dependencies = allProperties.Select(p => p.SafeType).Where(s => !IntrinsicSymbols.Contains(s)).ToImmutableArray();
+            if (dependencies.Length > 0)
+            {
+                var tasks = AllNamedTypeSymbols.Where(to => dependencies.Contains(to.Key)).Select(to => GenerateAsync(to.Value, progress, cancellationToken));
+                var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+                foreach (var r in results)
+                {
+                    result.AttributeLists = result.AttributeLists.AddRange(r.AttributeLists);
+                    result.Usings = result.Usings.AddRange(r.Usings);
+                    result.Externs = result.Externs.AddRange(r.Externs);
+                    result.Members = result.Members.AddRange(r.Members);
+                }
+            }
+            return result;
+        }
+
+        private static async Task<RichGenerationResult> GenerateClassForInterfaceAsync(MetaType metaType, CancellationToken cancellationToken)
+        {
+            var usings = SyntaxFactory.List<UsingDirectiveSyntax>();
+            var members = await CreateClassDeclarationAsync(metaType);
+            return new RichGenerationResult() { Members = SyntaxFactory.List(members), Usings = usings };
+        }
+
+        private static bool IsAssignableFrom(INamedTypeSymbol from, INamedTypeSymbol to)
+        {
+            if (to != null)
+            {
+                return SymbolEqualityComparer.Default.Equals(from, to)
+                    || IsAssignableFrom(from, to.BaseType)
+                    || to.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(from, i));
+            }
+            return false;
         }
 
         private static bool TryAdd<T>(ref ImmutableHashSet<T> set, T value)
@@ -102,29 +209,15 @@
             }
         }
 
-        private Task<RichGenerationResult> GenerateAsync()
-        {
-            _applyToTypeName = _interfaceDeclaration.ClassName();
 
-            inputDeclarations = SemanticModel.ComputeDeclarationsInSpan(TextSpan.FromBounds(0, SemanticModel.SyntaxTree.Length), true, _cancellationToken);
-            var applyFromSymbol = SemanticModel.GetDeclaredSymbol(_interfaceDeclaration, _cancellationToken);
-            InterfaceMetaType = new MetaType(this, applyFromSymbol);
+        //private ClassDeclarationSyntax CreateOrleansSerializer()
+        //{
+        //    var className = SyntaxFactory.Identifier($"{_applyToTypeName.Identifier.Text}OrleansSerializer");
+        //    var partialClass = SyntaxFactory.ClassDeclaration(className)
+        //        .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
 
-            var usings = SyntaxFactory.List<UsingDirectiveSyntax>();
-
-            var members = CreateClassDeclaration();
-            return Task.FromResult(new RichGenerationResult() { Members = SyntaxFactory.List(members), Usings = usings });
-        }
-
-
-        private ClassDeclarationSyntax CreateOrleansSerializer()
-        {
-            var className = SyntaxFactory.Identifier($"{_applyToTypeName.Identifier.Text}OrleansSerializer");
-            var partialClass = SyntaxFactory.ClassDeclaration(className)
-                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
-
-            return partialClass;
-        }
+        //    return partialClass;
+        //}
 
         private static SyntaxList<MemberDeclarationSyntax> WrapInAncestor(SyntaxList<MemberDeclarationSyntax> generatedMembers, SyntaxNode ancestor)
         {
@@ -186,37 +279,27 @@
         }
 
 
-        internal IEnumerable<INamedTypeSymbol> TypesInInputDocument
-        {
-            get
-            {
-                return from declaration in inputDeclarations
-                       let typeSymbol = declaration.DeclaredSymbol as INamedTypeSymbol
-                       where typeSymbol != null
-                       select typeSymbol;
-            }
-        }
-
         private static IEnumerable<MetaProperty> SortRequiredPropertiesFirst(IEnumerable<MetaProperty> fields)
         {
             return fields.Where(f => f.IsRequired).Concat(fields.Where(f => !f.IsRequired));
         }
 
-        private ParameterListSyntax CreateParameterList(IEnumerable<MetaProperty> fields)
+        private static ParameterListSyntax CreateParameterList(IEnumerable<MetaProperty> properties)
         {
-            fields = SortRequiredPropertiesFirst(fields);
+            properties = SortRequiredPropertiesFirst(properties);
 
             ParameterSyntax SetTypeAndDefault(ParameterSyntax p, MetaProperty f) => f.IsNullable
-                 ? p.WithType(f.TypeSyntax).WithDefault(SyntaxFactory.EqualsValueClause(SyntaxFactory.DefaultExpression(f.TypeSyntax)))
+                 //? p.WithType(f.TypeSyntax).WithDefault(SyntaxFactory.EqualsValueClause(f.Type.IsValueType ? SyntaxFactory.DefaultExpression((f.TypeSyntax)) : (ExpressionSyntax)Syntax.Generator.NullLiteralExpression()))
+                 ? p.WithType(f.TypeSyntax).WithDefault(SyntaxFactory.EqualsValueClause((ExpressionSyntax)Syntax.Generator.NullLiteralExpression()))
                  : p.WithType(f.TypeSyntax);
 
             return SyntaxFactory.ParameterList(
                 Syntax.JoinSyntaxNodes(
                     SyntaxKind.CommaToken,
-                    fields.Select(f => SetTypeAndDefault(SyntaxFactory.Parameter(f.NameAsArgument.Identifier), f))));
+                    properties.Select(f => SetTypeAndDefault(SyntaxFactory.Parameter(f.NameAsArgument.Identifier), f))));
         }
 
-        private ArgumentListSyntax CreateArgumentList(IEnumerable<MetaProperty> properties)
+        private static ArgumentListSyntax CreateArgumentList(IEnumerable<MetaProperty> properties)
         {
             return SyntaxFactory.ArgumentList(Syntax.JoinSyntaxNodes(
                            SyntaxKind.CommaToken,
@@ -226,7 +309,7 @@
                                    NoneToken,
                                    Syntax.ThisDot(f.NameAsProperty)))));
         }
-        private ArgumentListSyntax CreateAssignmentList(IEnumerable<MetaProperty> properties)
+        private static ArgumentListSyntax CreateAssignmentList(IEnumerable<MetaProperty> properties)
         {
             return SyntaxFactory.ArgumentList(Syntax.JoinSyntaxNodes(
                            SyntaxKind.CommaToken,

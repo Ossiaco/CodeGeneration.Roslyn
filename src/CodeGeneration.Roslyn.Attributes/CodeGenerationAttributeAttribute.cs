@@ -9,7 +9,7 @@ namespace CodeGeneration.Roslyn
     /// A base attribute type for code generation attributes.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-    public class CodeGenerationAttributeAttribute : Attribute
+    public abstract class CodeGenerationAttributeAttribute : Attribute
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="CodeGenerationAttributeAttribute"/> class.

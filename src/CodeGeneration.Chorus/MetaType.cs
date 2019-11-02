@@ -1,26 +1,95 @@
 ﻿namespace CodeGeneration.Chorus
 {
-    using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Diagnostics;
     using System.Linq;
+    using System.Threading.Tasks;
     using Microsoft.CodeAnalysis;
+    using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
 
     [DebuggerDisplay("{TypeSymbol?.Name}")]
-    internal struct MetaType
+    internal class MetaType
     {
-        public MetaType(CodeGen codeGen, INamedTypeSymbol typeSymbol)
+        private ImmutableHashSet<MetaProperty> _localProperties;
+        private ImmutableHashSet<MetaProperty> _allProperties;
+        private ImmutableHashSet<MetaProperty> _inheritedProperties;
+        private ImmutableArray<MetaType>? _ancestors;
+        private ImmutableArray<MetaType>? _allInterfaces;
+        private ImmutableArray<MetaType>? _explicitInterfaces;
+        private MetaType? _directAncestor;
+
+        public MetaType(INamedTypeSymbol typeSymbol, BaseTypeDeclarationSyntax declarationSyntax, SemanticModel semanticModel)
         {
-            Generator = codeGen;
+            _localProperties = null;
+            _allProperties = null;
+            _inheritedProperties = null;
+            _ancestors = null;
+            _allInterfaces = null;
+            _explicitInterfaces = null;
+            _directAncestor = null;
+
             TypeSymbol = typeSymbol;
+            DeclarationSyntax = declarationSyntax;
+            SemanticModel = semanticModel;
+
+            var codeGenAttribute = typeSymbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass.IsOrDerivesFrom<GenerateClassAttribute>());
+            if (codeGenAttribute != null)
+            {
+                var attribute = codeGenAttribute.NamedArguments.FirstOrDefault(v => v.Key == nameof(GenerateClassAttribute.AbstractAttributeType)).Value;
+                var field = codeGenAttribute.NamedArguments.FirstOrDefault(v => v.Key == nameof(GenerateClassAttribute.AbstractField)).Value;
+                AbstractAttribute = (INamedTypeSymbol)attribute.Value;
+                AbstractJsonProperty = (string)field.Value;
+                IsAbstract = (AbstractAttribute != null && AbstractJsonProperty != null);
+            }
+            else
+            {
+                AbstractJsonProperty = null;
+                AbstractAttribute = null;
+                IsAbstract = false;
+            }
+
+            var stringEnumAttribute = typeSymbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass.IsOrDerivesFrom<JsonStringEnumAttribute>());
+            if(stringEnumAttribute != null)
+            {
+                IsEnumAsString = true;
+                JsonStringEnumFormat = (JsonStringEnumFormat)stringEnumAttribute.ConstructorArguments[0].Value;
+            }
         }
 
-        public CodeGen Generator { get; }
+        private async Task<MetaType> SafeGetTypeAsync(INamedTypeSymbol symbol)
+        {
+            async Task<MetaType> GetMetaTypeForSymbolAsync(INamedTypeSymbol typeSymbol)
+            {
+                if (typeSymbol.DeclaringSyntaxReferences.Length > 0)
+                {
+                    var syntax = await typeSymbol.DeclaringSyntaxReferences[0].GetSyntaxAsync();
+                    var inputSemanticModel = SemanticModel.Compilation.GetSemanticModel(syntax.SyntaxTree);
+                    return new MetaType(typeSymbol, syntax as BaseTypeDeclarationSyntax, inputSemanticModel);
+                }
+                return new MetaType(typeSymbol, null, SemanticModel);
 
+            };
+            if (symbol == null)
+            {
+                return new MetaType(symbol, null, SemanticModel);
+            }
+            return CodeGen.AllNamedTypeSymbols.TryGetValue(symbol, out var result) ? result : await GetMetaTypeForSymbolAsync(symbol);
+        }
+
+        public bool IsEnumAsString { get; }
+        public JsonStringEnumFormat JsonStringEnumFormat { get; }
+        public SemanticModel SemanticModel { get; }
+        public BaseTypeDeclarationSyntax DeclarationSyntax { get; }
         public INamedTypeSymbol TypeSymbol { get; private set; }
+        public INamedTypeSymbol AbstractAttribute { get; }
+        public bool IsAbstract { get; }
+        public string AbstractJsonProperty { get; }
+        public IdentifierNameSyntax ClassName => (DeclarationSyntax as InterfaceDeclarationSyntax)?.ClassName() ?? SyntaxFactory.IdentifierName(DeclarationSyntax.Identifier);
+        public SyntaxToken ClassNameIdentifier => ClassName.Identifier;
+        public SyntaxToken InterfaceNameIdentifier => DeclarationSyntax.Identifier;
 
         public NameSyntax TypeSyntax
         {
@@ -37,71 +106,98 @@
             get { return TypeSymbol == null; }
         }
 
-        public IEnumerable<MetaProperty> LocalProperties
+        public async Task<ImmutableHashSet<MetaProperty>> GetLocalPropertiesAsync()
         {
-            get
+            if (_localProperties != null)
             {
-                var that = this;
-                return TypeSymbol?.GetMembers().OfType<IPropertySymbol>()
-                    .Where(f => !f.IsPropertyIgnored())
-                    .Select(f => new MetaProperty(that, f)) ?? ImmutableArray<MetaProperty>.Empty;
+                return _localProperties;
             }
+            if (IsDefault)
+            {
+                return _localProperties = ImmutableHashSet<MetaProperty>.Empty;
+            }
+
+            var derived = (await GetInheritedPropertiesAsync()).ToImmutableHashSet(MetaProperty.DefaultNameTypeComparer);
+            var result = new HashSet<MetaProperty>(MetaProperty.DefaultNameTypeComparer);
+            foreach (var i in await GetExplicitInterfacesAsync())
+            {
+                foreach (var prop in await i.GetLocalPropertiesAsync())
+                {
+                    if (!derived.Contains(prop) && !result.Contains(prop))
+                    {
+                        result.Add(prop);
+                    }
+                }
+            }
+
+            var that = this;
+            var query = TypeSymbol.GetMembers()
+                .OfType<IPropertySymbol>()
+                .Where(f => !f.IsPropertyIgnored())
+                .Select(p => new MetaProperty(that, p));
+
+            foreach (var prop in query)
+            {
+                if (!derived.Contains(prop) && !result.Contains(prop))
+                {
+                    result.Add(prop);
+                }
+            }
+            return _localProperties = result.ToImmutableHashSet();
         }
 
-        public IEnumerable<MetaProperty> AllProperties
+        public async Task<ImmutableHashSet<MetaProperty>> GetAllPropertiesAsync()
         {
-            get
+            if (_allProperties != null)
             {
-                foreach (var field in InheritedProperties)
-                {
-                    yield return field;
-                }
+                return _allProperties;
+            }
+            if (IsDefault)
+            {
+                return _allProperties = ImmutableHashSet<MetaProperty>.Empty;
+            }
 
-                foreach (var field in LocalProperties)
+            var directAncestor = await GetDirectAncestorAsync();
+            var result = directAncestor.IsDefault
+                ? new HashSet<MetaProperty>(MetaProperty.DefaultComparer)
+                : new HashSet<MetaProperty>(await directAncestor.GetAllPropertiesAsync(), MetaProperty.DefaultComparer);
+
+            foreach (var p in await GetLocalPropertiesAsync())
+            {
+                if (!result.Contains(p))
                 {
-                    yield return field;
+                    result.Add(p);
                 }
             }
+            return _allProperties = result.ToImmutableHashSet();
         }
 
-        public IEnumerable<MetaProperty> InheritedProperties
+        public async Task<ImmutableHashSet<MetaProperty>> GetInheritedPropertiesAsync()
         {
-            get
+            if (_inheritedProperties != null)
             {
-                if (TypeSymbol == null)
-                {
-                    yield break;
-                }
-
-                foreach (var field in Ancestor.AllProperties)
-                {
-                    yield return field;
-                }
+                return _inheritedProperties;
             }
+            if (IsDefault)
+            {
+                return _inheritedProperties = ImmutableHashSet<MetaProperty>.Empty;
+            }
+
+            var directAncestor = await GetDirectAncestorAsync();
+            return _inheritedProperties = (await directAncestor.GetAllPropertiesAsync());
         }
 
-        public IEnumerable<IGrouping<int, MetaProperty>> AllPropertiesByGeneration
+        private class EmptyMetaTypeGeneration : IGrouping<int, MetaType>
         {
-            get
-            {
-                var that = this;
-                var results = from generation in that.DefinedGenerations
-                              from field in that.AllProperties
-                              where field.Generation <= generation
-                              group field by generation into fieldsByGeneration
-                              select fieldsByGeneration;
-                var observedDefaultGeneration = false;
-                foreach (var result in results)
-                {
-                    observedDefaultGeneration |= result.Key == 0;
-                    yield return result;
-                }
+            internal static readonly IGrouping<int, MetaType> Default = new EmptyMetaTypeGeneration();
 
-                if (!observedDefaultGeneration)
-                {
-                    yield return EmptyMetaPropertyGeneration.Default;
-                }
-            }
+            private EmptyMetaTypeGeneration() { }
+
+            public int Key { get; }
+
+            public IEnumerator<MetaType> GetEnumerator() => Enumerable.Empty<MetaType>().GetEnumerator();
+
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
 
         private class EmptyMetaPropertyGeneration : IGrouping<int, MetaProperty>
@@ -117,54 +213,70 @@
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
 
-        public IEnumerable<int> DefinedGenerations => AllProperties.Select(f => f.Generation).Distinct();
-
-
-        public MetaType Ancestor
+        public async Task<MetaType> GetDirectAncestorAsync()
         {
-            get
+            if (_directAncestor != null)
             {
-                if (TypeSymbol.AllInterfaces.Any())
-                {
-                    return new MetaType(Generator, TypeSymbol.AllInterfaces[0]);
-                }
-                return TypeSymbol?.BaseType?.HasAttribute<GenerateClassAttribute>() ?? false
-                    ? new MetaType(Generator, TypeSymbol.BaseType)
-                    : TypeSymbol.AllInterfaces.Any()
-                        ? new MetaType(Generator, TypeSymbol.AllInterfaces[0])
-                        : default;
+                return _directAncestor;
             }
+            if (DeclarationSyntax?.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
+            {
+                var symbol = (INamedTypeSymbol)SemanticModel.GetTypeInfo(nameSyntax).Type;
+                return _directAncestor = await SafeGetTypeAsync(symbol);
+            }
+            return _directAncestor = new MetaType(null, null, SemanticModel);
         }
 
-        public IEnumerable<MetaType> Ancestors
+        public async Task<IEnumerable<MetaType>> GetAllInterfacesAsync()
         {
-            get
+            if (_allInterfaces != null)
             {
-                var ancestor = Ancestor;
-                while (!ancestor.IsDefault)
-                {
-                    yield return ancestor;
-                    ancestor = ancestor.Ancestor;
-                }
+                return _allInterfaces;
             }
+            if (IsDefault)
+            {
+                return _allInterfaces = ImmutableArray<MetaType>.Empty;
+            }
+            var that = this;
+            return _allInterfaces = (await Task.WhenAll(TypeSymbol.AllInterfaces.Select(SafeGetTypeAsync))).ToImmutableArray();
         }
 
-        public (INamedTypeSymbol attribute, string field) AbstractAttributes
+        public async Task<IEnumerable<MetaType>> GetExplicitInterfacesAsync()
         {
-            get
+            if (_explicitInterfaces != null)
             {
-                var codeGenAtrribute = TypeSymbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass.IsOrDerivesFrom<GenerateClassAttribute>());
-                if (codeGenAtrribute != null)
-                {
-                    var attribute = codeGenAtrribute.NamedArguments.FirstOrDefault(v => v.Key == nameof(GenerateClassAttribute.AbstractAttributeType)).Value;
-                    var field = codeGenAtrribute.NamedArguments.FirstOrDefault(v => v.Key == nameof(GenerateClassAttribute.AbstractField)).Value;
-                    return ((INamedTypeSymbol)attribute.Value, (string)field.Value);
-                }
-                return default;
+                return _explicitInterfaces;
             }
+            if (IsDefault)
+            {
+                return _explicitInterfaces = ImmutableArray<MetaType>.Empty;
+            }
+            var directAncestor = await GetDirectAncestorAsync();
+            var ancestors = directAncestor.IsDefault ? ImmutableHashSet<ISymbol>.Empty : directAncestor.TypeSymbol.AllInterfaces.ToImmutableHashSet(SymbolEqualityComparer.Default);
+            return _explicitInterfaces = (await Task.WhenAll(
+                    TypeSymbol.AllInterfaces
+                        .Where(i => !SymbolEqualityComparer.Default.Equals(i, directAncestor?.TypeSymbol) && !ancestors.Contains(i))
+                        .Select(SafeGetTypeAsync)))
+                .ToImmutableArray();
         }
 
-        public TypedConstant AttributeConstructorValue(INamedTypeSymbol typeSymbol)
+        public async Task<IEnumerable<MetaType>> GetDirectAncestorsAsync()
+        {
+            if (_ancestors != null)
+            {
+                return _ancestors;
+            }
+            var result = new List<MetaType>();
+            var ancestor = await GetDirectAncestorAsync();
+            while (!ancestor.IsDefault)
+            {
+                result.Add(ancestor);
+                ancestor = await ancestor.GetDirectAncestorAsync();
+            }
+            return _ancestors = result.ToImmutableArray();
+        }
+
+        public TypedConstant GetAbstractJsonAttributeValue(INamedTypeSymbol typeSymbol)
         {
             var attribute = TypeSymbol?.GetAttributes().FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, typeSymbol));
             if (attribute != null)
@@ -174,153 +286,11 @@
             return default;
         }
 
-        public IEnumerable<MetaType> ThisTypeAndAncestors
+        public async Task<bool> HasAncestorAsync()
         {
-            get
-            {
-                yield return this;
-                foreach (var ancestor in Ancestors)
-                {
-                    yield return ancestor;
-                }
-            }
+            return !(await GetDirectAncestorAsync()).IsDefault;
         }
 
-        public bool HasAncestor
-        {
-            get { return !Ancestor.IsDefault; }
-        }
-
-        public IEnumerable<MetaType> SelfAndAncestors
-        {
-            get
-            {
-                return new[] { this }.Concat(Ancestors);
-            }
-        }
-
-        public IEnumerable<MetaType> Descendents
-        {
-            get
-            {
-                if (Generator == null)
-                {
-                    return Enumerable.Empty<MetaType>();
-                }
-
-                var that = this;
-                return from type in Generator.TypesInInputDocument
-                       where !SymbolEqualityComparer.Default.Equals(type, that.TypeSymbol)
-                       let metaType = new MetaType(that.Generator, type)
-                       where metaType.Ancestors.Any(a => SymbolEqualityComparer.Default.Equals(a.TypeSymbol, that.TypeSymbol))
-                       select metaType;
-            }
-        }
-
-        public MetaProperty RecursiveProperty
-        {
-            get
-            {
-                var allowedElementTypes = ThisTypeAndAncestors;
-                var matches = LocalProperties.Where(f => f.IsCollection && !f.IsDefinitelyNotRecursive && allowedElementTypes.Any(t => SymbolEqualityComparer.Default.Equals(t.TypeSymbol, f.ElementType))).ToList();
-                return matches.Count == 1 ? matches.First() : default;
-            }
-        }
-
-        public MetaType RecursiveType
-        {
-            get { return !RecursiveProperty.IsDefault ? FindMetaType((INamedTypeSymbol)RecursiveProperty.ElementType) : default; }
-        }
-
-        public MetaType RecursiveTypeFromFamily
-        {
-            get { return GetTypeFamily().SingleOrDefault(t => t.IsRecursiveType); }
-        }
-
-        public bool IsRecursiveType
-        {
-            get
-            {
-                var that = this;
-                return GetTypeFamily().Any(t => that.Equals(t.RecursiveType));
-            }
-        }
-
-        public bool IsDerivedFromRecursiveType
-        {
-            get
-            {
-                var recursiveType = RecursiveTypeFromFamily;
-                return !recursiveType.IsDefault && recursiveType.IsAssignableFrom(TypeSymbol);
-            }
-        }
-
-        /// <summary>Gets the type that contains the collection of this (or a base) type.</summary>
-        public MetaType RecursiveParent
-        {
-            get
-            {
-                var that = this;
-                var result = GetTypeFamily().SingleOrDefault(t => !t.RecursiveType.IsDefault && t.RecursiveType.IsAssignableFrom(that.TypeSymbol));
-                return result;
-            }
-        }
-
-        public bool IsRecursiveParent
-        {
-            get { return Equals(RecursiveParent); }
-        }
-
-        public bool IsRecursiveParentOrDerivative
-        {
-            get { return IsRecursiveParent || Ancestors.Any(a => a.IsRecursiveParent); }
-        }
-
-        public bool IsRecursive => !RecursiveProperty.IsDefault;
-
-        public MetaType RootAncestorOrThisType
-        {
-            get
-            {
-                var current = this;
-                while (!current.Ancestor.IsDefault)
-                {
-                    current = current.Ancestor;
-                }
-
-                return current;
-            }
-        }
-
-        public bool ChildrenAreSorted
-        {
-            get
-            {
-                // Not very precise, but it does the job for now.
-                return RecursiveParent.RecursiveProperty.Type.Name == nameof(ImmutableSortedSet<int>);
-            }
-        }
-
-        public bool ChildrenAreOrdered
-        {
-            get
-            {
-                // Not very precise, but it does the job for now.
-                var namedType = RecursiveParent.RecursiveProperty.Type as INamedTypeSymbol;
-                return namedType != null && namedType.AllInterfaces.Any(iface => iface.Name == nameof(IReadOnlyList<int>));
-            }
-        }
-
-        public IEnumerable<MetaProperty> GetPropertiesBeyond(MetaType ancestor)
-        {
-            if (SymbolEqualityComparer.Default.Equals(ancestor.TypeSymbol, TypeSymbol))
-            {
-                return ImmutableList.Create<MetaProperty>();
-            }
-
-            return ImmutableList.CreateRange(LocalProperties)
-                .InsertRange(0, Ancestor.GetPropertiesBeyond(ancestor));
-        }
 
         public bool IsAssignableFrom(ITypeSymbol type)
         {
@@ -331,37 +301,6 @@
 
             return SymbolEqualityComparer.Default.Equals(type, TypeSymbol)
                 || IsAssignableFrom(type.BaseType);
-        }
-
-        public HashSet<MetaType> GetTypeFamily()
-        {
-            var set = new HashSet<MetaType>();
-            var furthestAncestor = Ancestors.LastOrDefault();
-            if (furthestAncestor.IsDefault)
-            {
-                furthestAncestor = this;
-            }
-
-            set.Add(furthestAncestor);
-            foreach (var relative in furthestAncestor.Descendents)
-            {
-                set.Add(relative);
-            }
-
-            return set;
-        }
-
-        public MetaType GetFirstCommonAncestor(MetaType cousin)
-        {
-            foreach (var ancestor in SelfAndAncestors)
-            {
-                if (cousin.SelfAndAncestors.Contains(ancestor))
-                {
-                    return ancestor;
-                }
-            }
-
-            throw new ArgumentException("No common ancestor found.");
         }
 
         public override bool Equals(object obj)
@@ -376,8 +315,7 @@
 
         public bool Equals(MetaType other)
         {
-            return Generator == other.Generator
-                && SymbolEqualityComparer.Default.Equals(TypeSymbol, other.TypeSymbol);
+            return SymbolEqualityComparer.Default.Equals(TypeSymbol, other.TypeSymbol);
         }
 
         public override int GetHashCode()
@@ -385,9 +323,19 @@
             return TypeSymbol?.GetHashCode() ?? 0;
         }
 
-        private MetaType FindMetaType(INamedTypeSymbol type)
+        public static IEqualityComparer<MetaType> DefaultComparer = new Comparer();
+
+        private class Comparer : IEqualityComparer<MetaType>
         {
-            return new MetaType(Generator, type);
+            public bool Equals(MetaType x, MetaType y)
+            {
+                return SymbolEqualityComparer.Default.Equals(x.TypeSymbol, y.TypeSymbol);
+            }
+
+            public int GetHashCode(MetaType obj)
+            {
+                return obj.TypeSymbol?.GetHashCode() ?? 0;
+            }
         }
     }
 

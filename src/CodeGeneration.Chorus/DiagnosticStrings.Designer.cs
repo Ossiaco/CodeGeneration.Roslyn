@@ -22,14 +22,14 @@ namespace CodeGeneration.Chorus {
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    internal class DiagnosticsStrings {
+    internal class DiagnosticStrings {
         
         private static global::System.Resources.ResourceManager resourceMan;
         
         private static global::System.Globalization.CultureInfo resourceCulture;
         
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
-        internal DiagnosticsStrings() {
+        internal DiagnosticStrings() {
         }
         
         /// <summary>
@@ -39,7 +39,7 @@ namespace CodeGeneration.Chorus {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("CodeGeneration.Chorus.DiagnosticsStrings", typeof(DiagnosticsStrings).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("CodeGeneration.Chorus.DiagnosticStrings", typeof(DiagnosticStrings).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -61,20 +61,20 @@ namespace CodeGeneration.Chorus {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Field &apos;{0}&apos; should be marked readonly..
+        ///   Looks up a localized string similar to Conversion for {0}: {1} is not currently supported.
         /// </summary>
-        internal static string IOG0001 {
+        internal static string OCC001 {
             get {
-                return ResourceManager.GetString("IOG0001", resourceCulture);
+                return ResourceManager.GetString("OCC001", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to {0} setting is not applicable and will be ignored..
+        ///   Looks up a localized string similar to An unexpected error occured: {0}.
         /// </summary>
-        internal static string IOG0002 {
+        internal static string OCC002 {
             get {
-                return ResourceManager.GetString("IOG0002", resourceCulture);
+                return ResourceManager.GetString("OCC002", resourceCulture);
             }
         }
     }

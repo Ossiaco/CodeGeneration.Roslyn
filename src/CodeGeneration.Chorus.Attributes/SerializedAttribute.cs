@@ -5,11 +5,13 @@
 namespace CodeGeneration.Chorus
 {
     using System;
+    using System.Diagnostics;
 
     /// <summary>
     /// Defines the <see cref="SerializedAttribute" />.
     /// </summary>
     [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false)]
+    [Conditional("CodeGeneration")]
     public class SerializedAttribute : Attribute
     {
         /// <summary>
@@ -26,4 +28,5 @@ namespace CodeGeneration.Chorus
         /// </summary>
         public bool Value { get; }
     }
+
 }

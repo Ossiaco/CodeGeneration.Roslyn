@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
+    <PackageReference Include="CG.Pluralization" Version="0.3000.12" />
   </ItemGroup>
 
   <ItemGroup>

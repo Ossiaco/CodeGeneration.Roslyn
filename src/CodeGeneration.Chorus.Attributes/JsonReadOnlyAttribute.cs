@@ -8,7 +8,7 @@ namespace CodeGeneration.Chorus
     using System.Diagnostics;
 
     /// <summary>
-    /// Defines the <see cref="JsonReadOnlyAttribute" />
+    /// Defines the <see cref="JsonReadOnlyAttribute" />.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
     [Conditional("CodeGeneration")]

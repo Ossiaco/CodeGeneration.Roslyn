@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "CodeGeneration.Chorus": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "codegen \"D:\\ossiaco\\dotnet\\artifacts\\obj\\Chorus\\Debug\\netstandard2.0\\Chorus.csproj.dotnet-codegen.rsp\"",
+      "workingDirectory": "D:\\ossiaco\\dotnet\\artifacts\\obj\\Chorus\\Debug\\netstandard2.0"
+    }
+  }
+}

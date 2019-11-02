@@ -117,10 +117,10 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="IOG0001" xml:space="preserve">
-    <value>Field '{0}' should be marked readonly.</value>
+  <data name="OCC001" xml:space="preserve">
+    <value>Conversion for {0}: {1} is not currently supported</value>
   </data>
-  <data name="IOG0002" xml:space="preserve">
-    <value>{0} setting is not applicable and will be ignored.</value>
+  <data name="OCC002" xml:space="preserve">
+    <value>An unexpected error occured: {0}</value>
   </data>
 </root>

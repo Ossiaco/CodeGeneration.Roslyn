@@ -59,7 +59,6 @@
     }
 
 
-    [CodeGeneration.Chorus.GenerateClass()]
     [Chorus.Common.Messaging.MessageTypeAttribute(0x00000001)]
     public interface ISomeMessage : IMessage
     {

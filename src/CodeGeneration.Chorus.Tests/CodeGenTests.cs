@@ -1,25 +1,22 @@
 ﻿namespace CodeGeneration.Chorus.Tests
 {
-    using System;
     using System.Collections.Generic;
-    using System.Collections.Immutable;
     using System.Data.Entity.Design.PluralizationServices;
     using System.IO;
     using System.Linq;
     using System.Reflection;
     using System.Text;
     using System.Text.Json;
-    using System.Threading;
     using System.Threading.Tasks;
     using CodeGeneration.Roslyn.Engine;
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
-    using Microsoft.CodeAnalysis.PooledObjects;
     using Microsoft.CodeAnalysis.Text;
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Logging.Testing;
     using Xunit;
     using Xunit.Abstractions;
+
 
     public class CodeGenTests : LoggedTest
     {
@@ -107,7 +104,7 @@
         }
 
 
-        protected async Task<GenerationResult> GenerateFromStreamAsync(string testName, ILogger logger, TextWriter textWriter)
+        private async Task<GenerationResult> GenerateFromStreamAsync(string testName, ILogger logger, TextWriter textWriter)
         {
             using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(GetType().Namespace + ".TestSources." + testName + ".cs"))
             {
@@ -119,7 +116,7 @@
             }
         }
 
-        protected async Task<GenerationResult> GenerateAsync(SourceText inputSource, ILogger logger, TextWriter textWriter)
+        private async Task<GenerationResult> GenerateAsync(SourceText inputSource, ILogger logger, TextWriter textWriter)
         {
             var solution = this.solution.WithDocumentText(inputDocumentId, inputSource);
             var inputDocument = solution.GetDocument(inputDocumentId)!;
@@ -127,14 +124,18 @@
             var progress = new SynchronousProgress<Diagnostic>(generatorDiagnostics.Add);
 
             var inputCompilation = ((CSharpCompilation)(await inputDocument.Project.GetCompilationAsync().ConfigureAwait(false))!)
-                .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithNullableContextOptions(NullableContextOptions.Enable));
+                .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithNullableContextOptions(NullableContextOptions.Enable));
             var inputSyntaxTree = await inputDocument.GetSyntaxTreeAsync();
 
-            var outputSyntaxTree = await DocumentTransform.TransformAsync(inputCompilation, inputSyntaxTree, null, Assembly.Load, progress);
+            var outputSyntaxTree = await DocumentTransform.TransformAsync(inputCompilation, inputSyntaxTree, null, progress);
             var outputDocument = inputDocument.Project.AddDocument("output.cs", await outputSyntaxTree.GetRootAsync());
 
             // Make sure the result compiles without errors or warnings.
-            var compilation = (await outputDocument.Project.GetCompilationAsync())!;
+            var compilation = ((CSharpCompilation)(await outputDocument.Project.GetCompilationAsync().ConfigureAwait(false))!)
+                .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithNullableContextOptions(NullableContextOptions.Enable));
+
             var compilationDiagnostics = compilation.GetDiagnostics();
 
             var inputDocumentText = await inputDocument.GetTextAsync();
@@ -222,69 +223,6 @@
             foreach (var fi in dir.GetFiles("*.dll"))
             {
                 yield return MetadataReference.CreateFromFile(fi.FullName);
-            }
-        }
-
-        protected class GenerationResult
-        {
-            public GenerationResult(
-                Document document,
-                SemanticModel semanticModel,
-                IReadOnlyList<Diagnostic> generatorDiagnostics,
-                IReadOnlyList<Diagnostic> compilationDiagnostics)
-            {
-                Document = document;
-                SemanticModel = semanticModel;
-                var declarationInfoBuilder = ArrayBuilder<DeclarationInfo>.GetInstance();
-                CSharpDeclarationComputer.ComputeDeclarationsInSpan(semanticModel, TextSpan.FromBounds(0, semanticModel.SyntaxTree.Length), true, declarationInfoBuilder, CancellationToken.None);
-                Declarations = declarationInfoBuilder.ToImmutableAndFree();
-                GeneratorDiagnostics = generatorDiagnostics;
-                CompilationDiagnostics = compilationDiagnostics;
-            }
-
-            public Document Document { get; private set; }
-
-            public SemanticModel SemanticModel { get; private set; }
-
-            internal ImmutableArray<DeclarationInfo> Declarations { get; private set; }
-
-            public IEnumerable<ISymbol> DeclaredSymbols
-            {
-                get { return Declarations.Select(d => d.DeclaredSymbol); }
-            }
-
-            public IEnumerable<IMethodSymbol> DeclaredMethods
-            {
-                get { return DeclaredSymbols.OfType<IMethodSymbol>(); }
-            }
-
-            public IEnumerable<IPropertySymbol> DeclaredProperties
-            {
-                get { return DeclaredSymbols.OfType<IPropertySymbol>(); }
-            }
-
-            public IEnumerable<INamedTypeSymbol> DeclaredTypes
-            {
-                get { return DeclaredSymbols.OfType<INamedTypeSymbol>(); }
-            }
-
-            public IReadOnlyList<Diagnostic> GeneratorDiagnostics { get; }
-
-            public IReadOnlyList<Diagnostic> CompilationDiagnostics { get; }
-        }
-
-        private class SynchronousProgress<T> : IProgress<T>
-        {
-            private readonly Action<T> action;
-
-            public SynchronousProgress(Action<T> action)
-            {
-                this.action = action;
-            }
-
-            public void Report(T value)
-            {
-                action(value);
             }
         }
     }

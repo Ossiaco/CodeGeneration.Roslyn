@@ -1,7 +1,10 @@
 ﻿namespace CodeGeneration.Chorus
 {
+    using System;
     using System.Collections.Generic;
+    using System.Collections.Immutable;
     using System.Linq;
+    using System.Threading.Tasks;
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -9,71 +12,96 @@
 
     internal partial class CodeGen
     {
-        private FieldDeclarationSyntax CreateConstMember(TypedConstant constant, string name)
+        private static FieldDeclarationSyntax CreateConstMember(TypedConstant constant, string name)
         {
-            var syntax = constant.Type.GetFullyQualifiedSymbolName(NullableAnnotation.None);
-            var value = Syntax.Generator.TypedConstantExpression(constant);
-            if (value is LiteralExpressionSyntax expr)
+            if (constant.Kind != TypedConstantKind.Error)
             {
-                return FieldDeclaration(
-                VariableDeclaration(syntax)
-                    .AddVariables(
-                        VariableDeclarator(Identifier(name.ToUpperInvariant()))
-                        .WithInitializer(
-                            EqualsValueClause(expr))))
-                .AddModifiers(
-                        Token(SyntaxKind.PublicKeyword),
-                        Token(SyntaxKind.ConstKeyword));
+                var syntax = constant.Type.GetFullyQualifiedSymbolName(NullableAnnotation.None);
+                var value = Syntax.Generator.TypedConstantExpression(constant);
+                if (value is ExpressionSyntax expr)
+                {
+                    return FieldDeclaration(
+                    VariableDeclaration(syntax)
+                        .AddVariables(
+                            VariableDeclarator(Identifier(name.ToUpperInvariant()))
+                            .WithInitializer(
+                                EqualsValueClause(expr))))
+                    .AddModifiers(
+                            Token(SyntaxKind.PublicKeyword),
+                            Token(SyntaxKind.ConstKeyword));
+                }
             }
-            throw new System.NotSupportedException();
+            return null;
         }
 
-        private IEnumerable<MemberDeclarationSyntax> CreateClassDeclaration()
+        private static async Task<IEnumerable<MemberDeclarationSyntax>> CreateClassDeclarationAsync(MetaType sourceMetaType)
         {
             var innerMembers = new List<MemberDeclarationSyntax>();
-
-            var isDerived = InterfaceMetaType.HasAncestor;
+            var hasAncestor = await sourceMetaType.HasAncestorAsync();
 
             var mergedFeatures = new List<FeatureGenerator>();
-            mergedFeatures.Merge(new StyleCopCompliance(this));
-            mergedFeatures.Merge(new NullableType(this));
-
-            // Define the constructor after merging all features since they can add to it.
+            mergedFeatures.Merge(new StyleCopCompliance(sourceMetaType));
 
             PropertyDeclarationSyntax CreatePropertyDeclaration(MetaProperty prop)
             {
                 var result = prop.PropertyDeclarationSyntax;
-                if (prop.Name == _options.AbstractField)
+                if (prop.Name == sourceMetaType.AbstractJsonProperty)
                 {
                     result = result.AddModifiers(Token(SyntaxKind.AbstractKeyword));
                 }
                 return result;
             }
 
-            // Select out the fields used to serializa abstract derived types
-            var inheritedMembers = InterfaceMetaType.Ancestors.Select(a => a.AbstractAttributes)
-                .Where(a => a.attribute != default)
-                .Select(v => (value: InterfaceMetaType.AttributeConstructorValue(v.attribute), field: v.field))
-                .Where(a => a.value.Value != default)
-                .ToList();
+            PropertyDeclarationSyntax ArrowPropertyDeclarationSyntax(string name, MetaProperty value)
+            {
+                var memberAccess = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, sourceMetaType.ClassName, IdentifierName(Identifier(name.ToUpperInvariant())));
+                return value.ArrowPropertyDeclarationSyntax(memberAccess);
+            }
 
-            innerMembers.AddRange(inheritedMembers.Select(v => CreateConstMember(v.value, v.field)));
-            innerMembers.AddRange(CreateJsonCtor(isDerived));
-            innerMembers.AddRange(CreatePublicCtor(isDerived));
+            async Task<(MetaType type, FieldDeclarationSyntax field, PropertyDeclarationSyntax property)> GetAbstractPropertyAsync(MetaType type)
+            {
+                var constField = CreateConstMember(sourceMetaType.GetAbstractJsonAttributeValue(type.AbstractAttribute), type.AbstractJsonProperty);
+                PropertyDeclarationSyntax property = null;
+                if (constField != null)
+                {
+                    var inheritedProperties = await sourceMetaType.GetInheritedPropertiesAsync();
+                    var inheritedProperty = inheritedProperties.SingleOrDefault(p => p.Name == type.AbstractJsonProperty);
+                    if (inheritedProperty.IsDefault)
+                    {
+                        property = null;
+                    }
+                    else
+                    {
+                        property = ArrowPropertyDeclarationSyntax(type.AbstractJsonProperty, inheritedProperty)
+                            .AddModifiers(Token(SyntaxKind.OverrideKeyword));
+                    }
+                }
+                return (type, constField, property);
+            }
 
+            // Select out the fields used to serialize an abstract derived types
+            var inheritedMembers = (await sourceMetaType.GetDirectAncestorsAsync())
+                .Where(a => a.IsAbstract)
+                .ToImmutableArray();
 
-            var inheritedProperties = inheritedMembers
-                .Select(a => InterfaceMetaType.InheritedProperties.Single(p => p.Name == a.field).PropertyDeclarationSyntax.AddModifiers(Token(SyntaxKind.OverrideKeyword)));
+            var abstractImplementations = (await Task.WhenAll(inheritedMembers.Select(GetAbstractPropertyAsync)))
+                .Where(v => v.field != null)
+                .ToImmutableArray();
 
-            innerMembers.AddRange(inheritedProperties);
-            innerMembers.AddRange(InterfaceMetaType.LocalProperties.Select(CreatePropertyDeclaration));
+            var isAbstract = sourceMetaType.IsAbstract || abstractImplementations.Length < inheritedMembers.Length;
 
-            var partialClass = ClassDeclaration(_applyToTypeName.Identifier)
-                .AddBaseListTypes(_interfaceDeclaration.AsBaseType().ToArray())
-                .AddModifiers(Token(SyntaxKind.InternalKeyword))
-                .WithMembers(List(innerMembers));
+            innerMembers.AddRange(abstractImplementations.Select(v => v.field));
+            innerMembers.AddRange(await sourceMetaType.CreateJsonCtorAsync(hasAncestor));
+            innerMembers.AddRange(await CreatePublicCtorAsync(sourceMetaType, hasAncestor));
+            innerMembers.AddRange(abstractImplementations.Select(v => v.property));
+            innerMembers.AddRange((await sourceMetaType.GetLocalPropertiesAsync()).Select(CreatePropertyDeclaration));
 
-            if (_options.IsAbstract || _options.AbstractAttributeType != null)
+            var partialClass = ClassDeclaration(sourceMetaType.ClassNameIdentifier)
+                 .AddBaseListTypes(sourceMetaType.SemanticModel.AsFullyQualifiedBaseType((TypeDeclarationSyntax)sourceMetaType.DeclarationSyntax).ToArray())
+                 .AddModifiers(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.PartialKeyword))
+                 .WithMembers(List(innerMembers));
+
+            if (isAbstract)
             {
                 partialClass = partialClass.AddModifiers(Token(SyntaxKind.AbstractKeyword));
             }
@@ -90,17 +118,16 @@
                 UsingDirective(ParseName("Chorus.Common.Text.Json")),
             });
 
-            var ns = _interfaceDeclaration.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.WithoutTrivia();
+            var ns = sourceMetaType.DeclarationSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.WithoutTrivia();
             var members = NamespaceDeclaration(ns)
                  .WithUsings(usingsDirectives)
                  .WithMembers(outerMembers);
 
-            partialClass = members.ChildNodes().OfType<ClassDeclarationSyntax>().Single(c => c.Identifier.ValueText == _applyToTypeName.Identifier.ValueText);
-            // return new[] { members, CreateJsonSerializer(partialClass, ns) };
-            return new[] { members };
+            partialClass = members.ChildNodes().OfType<ClassDeclarationSyntax>().Single(c => c.Identifier.ValueText == sourceMetaType.ClassNameIdentifier.ValueText);
+            return new[] { members, await CreateJsonSerializerForinterfaceAsync(sourceMetaType, ns) };
         }
 
-        private IEnumerable<MemberDeclarationSyntax> CreateJsonCtor(bool hasAncestor)
+        private static async Task<IEnumerable<MemberDeclarationSyntax>> CreateJsonCtorAsync(this MetaType sourceMetaType, bool hasAncestor)
         {
             var paramName = IdentifierName("json");
             var param = Parameter(paramName.Identifier).WithType(ParseName(nameof(System.Text.Json.JsonElement)));
@@ -109,7 +136,7 @@
             {
                 var nullable = metaProperty.IsNullable ? "Try" : "";
                 var array = metaProperty.IsCollection ? "Array" : "";
-                var typeName = metaProperty.TypeName;
+                var typeName = metaProperty.TypeClassName;
                 return InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, paramName, IdentifierName($"{nullable}Get{typeName}{array}"))
                            .WithOperatorToken(Token(SyntaxKind.DotToken)))
                            .WithArgumentList(
@@ -125,18 +152,38 @@
                                );
             }
 
-            var body = Block(
-                InterfaceMetaType.LocalProperties.Where(p => !p.IsIgnored).Select(f =>
+            var body = new List<StatementSyntax>();
+
+            if (sourceMetaType.IsAbstract)
+            {
+                var f = (await sourceMetaType.GetLocalPropertiesAsync()).Single(p => p.Name == sourceMetaType.AbstractJsonProperty);
+                var thisExpresion = Syntax.ThisDot(f.NameAsProperty);
+
+                var expression = IfStatement(
+                    BinaryExpression(SyntaxKind.NotEqualsExpression, GetJsonValue(f), Syntax.ThisDot(f.NameAsProperty)),
+                    ThrowStatement(
+                        ObjectCreationExpression(Syntax.GetTypeSyntax(typeof(System.Text.Json.JsonException))).AddArgumentListArguments(
+                            Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"Invalid {sourceMetaType.AbstractJsonProperty} specified."))))));
+                body.Add(expression);
+            }
+
+            bool IsRequired(MetaProperty prop)
+            {
+                return prop.IsIgnored || sourceMetaType.AbstractJsonProperty == prop.Name ? false : true;
+            }
+
+            body.AddRange(
+                (await sourceMetaType.GetLocalPropertiesAsync()).Where(IsRequired).Select(f =>
                 ExpressionStatement(
                     AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, IdentifierName(f.NameAsProperty.Identifier), GetJsonValue(f))))
                 );
 
 
-            var ctor = ConstructorDeclaration(_applyToTypeName.Identifier)
-                .AddModifiers(Token(_options.IsAbstract ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
+            var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                .AddModifiers(Token(sourceMetaType.IsAbstract ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { param })))
                 // .AddAttributeLists(SyntaxFactory.AttributeList().AddAttributes(ObsoletePublicCtor))
-                .WithBody(body);
+                .WithBody(Block(body));
 
             if (hasAncestor)
             {
@@ -145,13 +192,15 @@
                     ArgumentList(SingletonSeparatedList(Argument(paramName)))));
             }
 
-            yield return ctor;
+            return new[] { ctor };
         }
 
-        private IEnumerable<MemberDeclarationSyntax> CreatePublicCtor(bool hasAncestor)
+        private static async Task<IEnumerable<MemberDeclarationSyntax>> CreatePublicCtorAsync(MetaType sourceMetaType, bool hasAncestor)
         {
+            static bool isRequired(MetaProperty p) => !p.IsReadonly && !p.IsAbstract && !p.HasSetMethod;
+
             var body = Block(
-                InterfaceMetaType.LocalProperties.Where(p => !p.IsReadonly).Select(f => ExpressionStatement(
+                (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired).Select(f => ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         IdentifierName(f.NameAsProperty.Identifier),
@@ -159,23 +208,21 @@
 
 
             // var thisArguments = CreateArgumentList(_applyFromMetaType.AllProperties);
-            var ctor = ConstructorDeclaration(_applyToTypeName.Identifier)
-                .AddModifiers(Token(_options.IsAbstract ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
-                .WithParameterList(CreateParameterList(InterfaceMetaType.AllProperties.Where(p => !p.IsReadonly)))
+            var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                .AddModifiers(Token(sourceMetaType.IsAbstract ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
+                .WithParameterList(CreateParameterList((await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired)))
                 .WithBody(body);
 
             if (hasAncestor)
             {
-                var props = InterfaceMetaType.InheritedProperties.Where(p => !p.IsReadonly).ToList();
+                var props = (await sourceMetaType.GetInheritedPropertiesAsync()).Where(isRequired).ToList();
                 if (props.Count > 0)
                 {
                     var arguments = CreateAssignmentList(props);
                     ctor = ctor.WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
                 }
             }
-            yield return ctor;
+            return new[] { ctor };
         }
-
-
     }
 }
