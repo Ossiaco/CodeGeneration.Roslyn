@@ -2,7 +2,7 @@
 // Copyright (c) Ossiaco Inc.  All rights reserved.
 //------------------------------------------------------------
 
-namespace CodeGeneration.Chorus.Attributes
+namespace CodeGeneration.Chorus
 {
     using System.Text.Json;
 
