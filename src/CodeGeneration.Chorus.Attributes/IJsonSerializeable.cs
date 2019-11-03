@@ -12,7 +12,7 @@ namespace CodeGeneration.Chorus
     public interface IJsonSerializeable
     {
         /// <summary>
-        /// The ToJson
+        /// The ToJson.
         /// </summary>
         /// <param name="writer">The writer<see cref="Utf8JsonWriter"/>.</param>
         void ToJson(Utf8JsonWriter writer);

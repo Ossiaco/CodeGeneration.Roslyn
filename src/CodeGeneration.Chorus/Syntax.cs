@@ -58,7 +58,7 @@ namespace CodeGeneration.Chorus
         }
 
 
-        internal static ExpressionSyntax BaseDot(SimpleNameSyntax memberAccess)
+        internal static MemberAccessExpressionSyntax BaseDot(SimpleNameSyntax memberAccess)
         {
             return MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,

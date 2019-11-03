@@ -20,7 +20,8 @@
         private static readonly TypeSyntax _stringTypeSyntax = PredefinedType(Token(SyntaxKind.StringKeyword));
         private static readonly TypeSyntax _bufferWriterType = GenericName(Identifier("IBufferWriter"), TypeArgumentList(SingletonSeparatedList(_byteTypeSyntax)));
         private static readonly TypeSyntax _utf8JsonWriterType = ParseName(nameof(System.Text.Json.Utf8JsonWriter));
-        private static readonly ParameterSyntax _utf8JsonWriterThisParameter = Parameter(_jsonWriterParameterName.Identifier).WithType(_utf8JsonWriterType).AddModifiers(Token(SyntaxKind.ThisKeyword));
+        private static readonly ParameterSyntax _utf8JsonWriterParameter = Parameter(_jsonWriterParameterName.Identifier).WithType(_utf8JsonWriterType);
+        private static readonly ParameterSyntax _utf8JsonWriterThisParameter = _utf8JsonWriterParameter.AddModifiers(Token(SyntaxKind.ThisKeyword));
         private static readonly ParameterSyntax _jsonElementThisParameter = Parameter(_jsonElementParameterName.Identifier).WithType(ParseName(nameof(System.Text.Json.JsonElement))).AddModifiers(Token(SyntaxKind.ThisKeyword));
         private static readonly ParameterSyntax _bufferWriterParameter = Parameter(_jsonBufferWriterParameterName.Identifier).WithType(_bufferWriterType).AddModifiers(Token(SyntaxKind.ThisKeyword));
         private static readonly ParameterSyntax _propertyNameParameter = Parameter(_propertyNameParameterName.Identifier).WithType(_stringTypeSyntax);
@@ -71,10 +72,10 @@
                 .WithBody(Block(body));
         }
 
-
-        private static async Task<MethodDeclarationSyntax> Utf8JsonWriterValueMethodAsync(this MetaType sourceMetaType, string className, IdentifierNameSyntax interfaceType)
+        private static async Task<IEnumerable<MethodDeclarationSyntax>> Utf8JsonWriterValueMethodsAsync(this MetaType sourceMetaType, string className, IdentifierNameSyntax interfaceType)
         {
-            var methodName = Identifier($"Write{className}Value");
+            var methodName = $"Write{className}JsonValue";
+            var methodNameIdentifier = Identifier(methodName);
             var valueParameter = Parameter(_valueParameterName.Identifier).WithType(interfaceType);
 
             static InvocationExpressionSyntax WriteJsonValue(MetaProperty metaProperty)
@@ -106,7 +107,7 @@
             if (await sourceMetaType.HasAncestorAsync())
             {
                 var ancestor = await sourceMetaType.GetDirectAncestorAsync();
-                var callAncestor = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonWriterParameterName, IdentifierName($"Write{ancestor.ClassName}Value"))
+                var callAncestor = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonWriterParameterName, IdentifierName($"Write{ancestor.ClassName}JsonValue"))
                            .WithOperatorToken(Token(SyntaxKind.DotToken)))
                            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(_valueParameterName)))
                                .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
@@ -116,10 +117,26 @@
 
             body.AddRange(properties.Where(IsRequired).Select(f => ExpressionStatement(WriteJsonValue(f))));
 
-            return MethodDeclaration(_voidTypeSyntax, methodName)
+            var definiteWrite = MethodDeclaration(_voidTypeSyntax, methodNameIdentifier)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter, valueParameter })))
                 .WithBody(Block(body));
+
+            methodNameIdentifier = Identifier($"Write{className}Value");
+
+            InvocationExpressionSyntax writeValueSyntax(string methodName) => InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonWriterParameterName, IdentifierName(methodName))
+               .WithOperatorToken(Token(SyntaxKind.DotToken)))
+               .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(_valueParameterName) }))
+                   .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                   .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+            var polyWrite = MethodDeclaration(_voidTypeSyntax, methodNameIdentifier)
+                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter, valueParameter })))
+                .WithExpressionBody(ArrowExpressionClause(writeValueSyntax(methodName)))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+            return new[] { definiteWrite, polyWrite };
         }
 
         private static IEnumerable<MethodDeclarationSyntax> Utf8JsonWriterPropertyMethods(this MetaType sourceMetaType, string className, IdentifierNameSyntax interfaceType)
@@ -130,7 +147,7 @@
             var nullableValueParameter = Parameter(_valueParameterName.Identifier).WithType(SyntaxFactory.NullableType(interfaceType));
             var callbackMethodName = IdentifierName($"Write{className}Value");
 
-            InvocationExpressionSyntax writeArraySyntax(string methodName) => InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonWriterParameterName, IdentifierName(methodName))
+            InvocationExpressionSyntax writeObjectValue(string methodName) => InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonWriterParameterName, IdentifierName(methodName))
                .WithOperatorToken(Token(SyntaxKind.DotToken)))
                .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(_propertyNameParameterName), Argument(_valueParameterName), Argument(callbackMethodName) }))
                    .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
@@ -139,13 +156,13 @@
             yield return MethodDeclaration(_voidTypeSyntax, methodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter, _propertyNameParameter, valueParameter })))
-                .WithExpressionBody(ArrowExpressionClause(writeArraySyntax("WriteObject")))
+                .WithExpressionBody(ArrowExpressionClause(writeObjectValue("WriteObject")))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
             yield return MethodDeclaration(_voidTypeSyntax, safeMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter, _propertyNameParameter, nullableValueParameter })))
-                .WithExpressionBody(ArrowExpressionClause(writeArraySyntax("SafeWriteObject")))
+                .WithExpressionBody(ArrowExpressionClause(writeObjectValue("SafeWriteObject")))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
@@ -193,7 +210,6 @@
 
         }
 
-
         private static IEnumerable<MethodDeclarationSyntax> JsonGetMethods(this MetaType sourceMetaType, string className, IdentifierNameSyntax interfaceType)
         {
             var getMethodName = Identifier($"Get{className}");
@@ -230,7 +246,6 @@
 
         }
 
-
         private static async Task<IEnumerable<MethodDeclarationSyntax>> CreateWriteValueMethodsAsync(MetaType sourceMetaType)
         {
             var className = sourceMetaType.ClassNameIdentifier.Text;
@@ -239,7 +254,7 @@
             var result = new List<MethodDeclarationSyntax>();
 
             //result.Add(sourceMetaType.IBufferWriterMethod(className, interfaceType));
-            result.Add(await sourceMetaType.Utf8JsonWriterValueMethodAsync(className, interfaceType));
+            result.AddRange(await sourceMetaType.Utf8JsonWriterValueMethodsAsync(className, interfaceType));
             result.AddRange(sourceMetaType.Utf8JsonWriterPropertyMethods(className, interfaceType));
             result.AddRange(sourceMetaType.Utf8JsonWriterArrayMethods(className, interfaceType));
             result.AddRange(sourceMetaType.JsonGetMethods(className, interfaceType));

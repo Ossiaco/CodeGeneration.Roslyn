@@ -39,7 +39,6 @@
     <PackageReference Include="CG.Pluralization" Version="0.3000.12" PrivateAssets="none" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Validation" Version="15.5.31" />
-    <PackageReference Include="System.Text.Json" Version="4.7.0-rc1.19455.5" />
   </ItemGroup>
 
 

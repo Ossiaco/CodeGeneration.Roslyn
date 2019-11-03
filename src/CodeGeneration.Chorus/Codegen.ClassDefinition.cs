@@ -12,6 +12,7 @@
 
     internal partial class CodeGen
     {
+        private static BaseExpressionSyntax _baseExpression = BaseExpression(SyntaxFactory.Token(SyntaxKind.BaseKeyword));
         private static FieldDeclarationSyntax CreateConstMember(TypedConstant constant, string name)
         {
             if (constant.Kind != TypedConstantKind.Error)
@@ -89,12 +90,17 @@
                 .ToImmutableArray();
 
             var isAbstract = sourceMetaType.IsAbstract || abstractImplementations.Length < inheritedMembers.Length;
+            var localProperties = await sourceMetaType.GetLocalPropertiesAsync();
 
             innerMembers.AddRange(abstractImplementations.Select(v => v.field));
             innerMembers.AddRange(await sourceMetaType.CreateJsonCtorAsync(hasAncestor));
             innerMembers.AddRange(await CreatePublicCtorAsync(sourceMetaType, hasAncestor));
             innerMembers.AddRange(abstractImplementations.Select(v => v.property));
-            innerMembers.AddRange((await sourceMetaType.GetLocalPropertiesAsync()).Select(CreatePropertyDeclaration));
+            innerMembers.AddRange(localProperties.Select(CreatePropertyDeclaration));
+            if (localProperties.Count > 0)
+            {
+                innerMembers.Add(await ToJsonMethodAsync(sourceMetaType));
+            }
 
             var partialClass = ClassDeclaration(sourceMetaType.ClassNameIdentifier)
                  .AddBaseListTypes(sourceMetaType.SemanticModel.AsFullyQualifiedBaseType((TypeDeclarationSyntax)sourceMetaType.DeclarationSyntax).ToArray())
@@ -178,7 +184,6 @@
                     AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, IdentifierName(f.NameAsProperty.Identifier), GetJsonValue(f))))
                 );
 
-
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
                 .AddModifiers(Token(sourceMetaType.IsAbstract ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { param })))
@@ -194,6 +199,56 @@
 
             return new[] { ctor };
         }
+
+        private static async Task<MethodDeclarationSyntax> ToJsonMethodAsync(this MetaType sourceMetaType)
+        {
+            static InvocationExpressionSyntax WriteJsonValue(MetaProperty metaProperty)
+            {
+                var nullable = metaProperty.IsNullable ? "Safe" : "";
+                var array = metaProperty.IsCollection ? "Array" : "";
+                var typeName = metaProperty.TypeClassName;
+                return InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonWriterParameterName, IdentifierName($"{nullable}Write{typeName}{array}"))
+                           .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                           .WithArgumentList(
+                               ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken,
+                                        Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(TriviaList(), metaProperty.NameAsJsonProperty, string.Empty, TriviaList()))),
+                                        Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _valueParameterName, IdentifierName(metaProperty.Symbol.Name)))
+                                       )
+                                   )
+                               .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                               .WithCloseParenToken(Token(SyntaxKind.CloseParenToken))
+                               );
+            }
+
+            bool IsRequired(MetaProperty prop)
+            {
+                return prop.IsIgnored || sourceMetaType.AbstractJsonProperty == prop.Name ? false : true;
+            }
+
+            var properties = await sourceMetaType.GetLocalPropertiesAsync();
+            var body = new List<ExpressionStatementSyntax>();
+
+            var hasAncestor = await sourceMetaType.HasAncestorAsync();
+            if (hasAncestor)
+            {
+                var ancestor = await sourceMetaType.GetDirectAncestorAsync();
+                var callAncestor = InvocationExpression(Syntax.BaseDot(IdentifierName($"ToJson"))
+                           .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                           .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(_valueParameterName)))
+                               .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                               .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+                body.Add(ExpressionStatement(callAncestor));
+            }
+
+            body.AddRange(properties.Where(IsRequired).Select(f => ExpressionStatement(WriteJsonValue(f))));
+
+            var virtualOrOverride = hasAncestor ? Token(SyntaxKind.OverrideKeyword) : Token(SyntaxKind.VirtualKeyword);
+            return MethodDeclaration(_voidTypeSyntax, Identifier("ToJson"))
+                .AddModifiers(Token(SyntaxKind.PublicKeyword), virtualOrOverride)
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter })))
+                .WithBody(Block(body));
+        }
+
 
         private static async Task<IEnumerable<MemberDeclarationSyntax>> CreatePublicCtorAsync(MetaType sourceMetaType, bool hasAncestor)
         {
