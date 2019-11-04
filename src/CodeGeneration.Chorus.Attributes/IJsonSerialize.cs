@@ -7,9 +7,9 @@ namespace CodeGeneration.Chorus
     using System.Text.Json;
 
     /// <summary>
-    /// Defines the <see cref="IJsonSerializeable" />.
+    /// Defines the <see cref="IJsonSerialize" />.
     /// </summary>
-    public interface IJsonSerializeable
+    public interface IJsonSerialize
     {
         /// <summary>
         /// The ToJson.
