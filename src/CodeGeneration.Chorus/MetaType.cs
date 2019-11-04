@@ -34,6 +34,7 @@
             TypeSymbol = typeSymbol;
             DeclarationSyntax = declarationSyntax;
             SemanticModel = semanticModel;
+            //ISerializeable = IsAssignableFrom(CodeGen.IJsonSerializeableType);
 
             var codeGenAttribute = typeSymbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass.IsOrDerivesFrom<GenerateClassAttribute>());
             if (codeGenAttribute != null)
@@ -52,7 +53,7 @@
             }
 
             var stringEnumAttribute = typeSymbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass.IsOrDerivesFrom<JsonStringEnumAttribute>());
-            if(stringEnumAttribute != null)
+            if (stringEnumAttribute != null)
             {
                 IsEnumAsString = true;
                 JsonStringEnumFormat = (JsonStringEnumFormat)stringEnumAttribute.ConstructorArguments[0].Value;
@@ -79,6 +80,7 @@
             return CodeGen.AllNamedTypeSymbols.TryGetValue(symbol, out var result) ? result : await GetMetaTypeForSymbolAsync(symbol);
         }
 
+        //public bool ISerializeable { get; }
         public bool IsEnumAsString { get; }
         public JsonStringEnumFormat JsonStringEnumFormat { get; }
         public SemanticModel SemanticModel { get; }
@@ -222,7 +224,10 @@
             if (DeclarationSyntax?.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
                 var symbol = (INamedTypeSymbol)SemanticModel.GetTypeInfo(nameSyntax).Type;
-                return _directAncestor = await SafeGetTypeAsync(symbol);
+                if (!symbol.Equals(CodeGen.IJsonSerializeableType))
+                {
+                    return _directAncestor = await SafeGetTypeAsync(symbol);
+                }
             }
             return _directAncestor = new MetaType(null, null, SemanticModel);
         }
@@ -292,6 +297,7 @@
         }
 
 
+
         public bool IsAssignableFrom(ITypeSymbol type)
         {
             if (type == null)
@@ -300,7 +306,9 @@
             }
 
             return SymbolEqualityComparer.Default.Equals(type, TypeSymbol)
-                || IsAssignableFrom(type.BaseType);
+                || IsAssignableFrom(type.BaseType)
+                || (TypeSymbol is INamedTypeSymbol namedType
+                    && namedType.AllInterfaces.Any(s => SymbolEqualityComparer.Default.Equals(type, s)));
         }
 
         public override bool Equals(object obj)
@@ -338,6 +346,4 @@
             }
         }
     }
-
-
 }

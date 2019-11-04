@@ -117,7 +117,6 @@
 
             var outerMembers = List<MemberDeclarationSyntax>();
             outerMembers = outerMembers.Add(partialClass);
-            // outerMembers = outerMembers.Add(CreateOrleansSerializer());
 
             var usingsDirectives = List(new[] {
                 UsingDirective(ParseName(typeof(System.Text.Json.JsonElement).Namespace)),
@@ -130,7 +129,7 @@
                  .WithMembers(outerMembers);
 
             partialClass = members.ChildNodes().OfType<ClassDeclarationSyntax>().Single(c => c.Identifier.ValueText == sourceMetaType.ClassNameIdentifier.ValueText);
-            return new[] { members, await CreateJsonSerializerForinterfaceAsync(sourceMetaType, ns) };
+            return new[] { members, CreateJsonSerializerForinterface(sourceMetaType, ns) };
         }
 
         private static async Task<IEnumerable<MemberDeclarationSyntax>> CreateJsonCtorAsync(this MetaType sourceMetaType, bool hasAncestor)
@@ -202,17 +201,18 @@
 
         private static async Task<MethodDeclarationSyntax> ToJsonMethodAsync(this MetaType sourceMetaType)
         {
+
             static InvocationExpressionSyntax WriteJsonValue(MetaProperty metaProperty)
             {
                 var nullable = metaProperty.IsNullable ? "Safe" : "";
                 var array = metaProperty.IsCollection ? "Array" : "";
-                var typeName = metaProperty.TypeClassName;
+                var typeName = metaProperty.JsonTypeName;
                 return InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonWriterParameterName, IdentifierName($"{nullable}Write{typeName}{array}"))
                            .WithOperatorToken(Token(SyntaxKind.DotToken)))
                            .WithArgumentList(
                                ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken,
                                         Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(TriviaList(), metaProperty.NameAsJsonProperty, string.Empty, TriviaList()))),
-                                        Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _valueParameterName, IdentifierName(metaProperty.Symbol.Name)))
+                                        Argument(Syntax.ThisDot(IdentifierName(metaProperty.Symbol.Name)))
                                        )
                                    )
                                .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
@@ -234,7 +234,7 @@
                 var ancestor = await sourceMetaType.GetDirectAncestorAsync();
                 var callAncestor = InvocationExpression(Syntax.BaseDot(IdentifierName($"ToJson"))
                            .WithOperatorToken(Token(SyntaxKind.DotToken)))
-                           .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(_valueParameterName)))
+                           .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(_jsonWriterParameterName)))
                                .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
                                .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
                 body.Add(ExpressionStatement(callAncestor));
@@ -245,7 +245,7 @@
             var virtualOrOverride = hasAncestor ? Token(SyntaxKind.OverrideKeyword) : Token(SyntaxKind.VirtualKeyword);
             return MethodDeclaration(_voidTypeSyntax, Identifier("ToJson"))
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), virtualOrOverride)
-                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter })))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterParameter })))
                 .WithBody(Block(body));
         }
 

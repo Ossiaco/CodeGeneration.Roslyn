@@ -50,9 +50,12 @@ namespace CodeGeneration.Chorus
             if (value.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
                 var typeSymbol = ((INamedTypeSymbol)model.GetTypeInfo(nameSyntax).Type);
-                SimpleNameSyntax leafName = IdentifierName(typeSymbol.Name.Substring(1));
-                TypeSyntax typeSyntax = (typeSymbol.ContainingSymbol as INamespaceOrTypeSymbol)?.GetFullyQualifiedSymbolName(NullableAnnotation.None) is NameSyntax parent ? (NameSyntax)QualifiedName(parent, leafName) : leafName;
-                yield return SimpleBaseType(typeSyntax);
+                if (!typeSymbol.Equals(CodeGen.IJsonSerializeableType))
+                {
+                    SimpleNameSyntax leafName = IdentifierName(typeSymbol.Name.Substring(1));
+                    TypeSyntax typeSyntax = (typeSymbol.ContainingSymbol as INamespaceOrTypeSymbol)?.GetFullyQualifiedSymbolName(NullableAnnotation.None) is NameSyntax parent ? (NameSyntax)QualifiedName(parent, leafName) : leafName;
+                    yield return SimpleBaseType(typeSyntax);
+                }
             }
             yield return SimpleBaseType(ParseName(value.Identifier.ValueText));
         }
@@ -158,7 +161,7 @@ namespace CodeGeneration.Chorus
                     QualifiedName(
                         IdentifierName(nameof(System)),
                         IdentifierName(nameof(System.Collections))),
-                    IdentifierName(nameof(System.Collections.Generic))),
+                        IdentifierName(nameof(System.Collections.Generic))),
                 GenericName(
                     Identifier(nameof(IEnumerable<int>)),
                     TypeArgumentList(SingletonSeparatedList(typeSyntax))));

@@ -37,9 +37,12 @@
 
         internal static ImmutableDictionary<INamedTypeSymbol, MetaType> AllNamedTypeSymbols { get; private set; }
         internal static ImmutableHashSet<INamedTypeSymbol> IntrinsicSymbols { get; private set; }
+        public static INamedTypeSymbol IJsonSerializeableType;
+
 
         private async static Task<ImmutableDictionary<INamedTypeSymbol, MetaType>> GetAllTypeDefinitionsAsync(CSharpCompilation compilation)
         {
+            IJsonSerializeableType = compilation.GetTypeByMetadataName(typeof(IJsonSerialize).FullName);
             var result = new ConcurrentDictionary<INamedTypeSymbol, MetaType>(SymbolEqualityComparer.Default);
 
             async Task TryAdd(INamedTypeSymbol typeSymbol)

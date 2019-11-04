@@ -10,7 +10,7 @@
     using System.Diagnostics;
 
     [DebuggerDisplay("{Symbol?.Name}")]
-    internal struct MetaProperty
+    internal class MetaProperty
     {
         private readonly MetaType metaType;
         private TypeSyntax _elementTypeSyntax;
@@ -22,9 +22,16 @@
             Symbol = symbol;
             _elementTypeSyntax = default;
             _typeSyntax = default;
+            ElementType = GetTypeOrCollectionMemberType(Symbol.Type);
+            if (ElementType.Name == "LogLevel")
+            {
+                ElementType = ElementType;
+            }
+            IsJsonSerializeable = IsElementTypeAssignableFrom(CodeGen.IJsonSerializeableType);
         }
 
         public string Name => Symbol.Name;
+        public bool IsJsonSerializeable { get; }
 
         public IdentifierNameSyntax NameAsProperty => SyntaxFactory.IdentifierName(Symbol.Name.ToPascalCase());
 
@@ -56,7 +63,6 @@
         {
             get
             {
-                // Verify.Operation(!IsDefault, "Default instance.");
                 return SyntaxFactory.IdentifierName(Symbol.Name.ToCamelCase());
             }
         }
@@ -76,6 +82,7 @@
         public bool IsDictionary => IsDictionaryType(Symbol.Type);
         public string TypeName => GetSafeTypeName(Symbol.Type);
         public string TypeClassName => GetSafeTypeClassName(GetSafePropertyType(Symbol.Type));
+        public string JsonTypeName => IsJsonSerializeable ? "Object" : GetSafeTypeClassName(GetSafePropertyType(Symbol.Type));
 
         public bool IsDefinitelyNotRecursive => Symbol.IsAttributeApplied<NotRecursiveAttribute>();
 
@@ -92,7 +99,7 @@
 
         public IPropertySymbol Symbol { get; }
 
-        public ITypeSymbol ElementType => GetTypeOrCollectionMemberType(Symbol.Type);
+        public ITypeSymbol ElementType { get; }
 
         public ITypeSymbol ElementKeyType => GetDictionaryType(Symbol.Type)?.TypeArguments[0];
 
@@ -112,8 +119,21 @@
 
             var that = this;
             return SymbolEqualityComparer.Default.Equals(type, Symbol.Type)
-                || IsAssignableFrom(type.BaseType)
+                || Symbol.Type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(type, i))
                 || type.Interfaces.Any(i => that.IsAssignableFrom(i));
+        }
+
+        public bool IsElementTypeAssignableFrom(ITypeSymbol type)
+        {
+            if (type == null)
+            {
+                return false;
+            }
+
+            var that = this;
+            return SymbolEqualityComparer.Default.Equals(type, ElementType)
+                || ElementType.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(type, i))
+                || IsAssignableFrom(type.BaseType);
         }
 
         public PropertyDeclarationSyntax ArrowPropertyDeclarationSyntax(ExpressionSyntax valueSyntax)
