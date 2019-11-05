@@ -75,11 +75,6 @@ namespace CodeGeneration.Roslyn.Engine
         public IEnumerable<string> AdditionalWrittenFiles => this.additionalWrittenFiles;
 
         /// <summary>
-        /// Gets the subset of <see cref="GeneratedFiles"/> that contain no types.
-        /// </summary>
-        public IEnumerable<string> EmptyGeneratedFiles => this.emptyGeneratedFiles;
-
-        /// <summary>
         /// Gets or sets the directory with the project file.
         /// </summary>
         public string ProjectDirectory { get; set; }
@@ -128,13 +123,13 @@ namespace CodeGeneration.Roslyn.Engine
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var sourceHash = Convert.ToBase64String(hasher.ComputeHash(Encoding.UTF8.GetBytes(inputSyntaxTree.FilePath)), 0, 6).Replace('/', '-');
-                    Logger.Info($"File \"{inputSyntaxTree.FilePath}\" hashed to {sourceHash}");
-                    var outputFilePath = Path.Combine(this.IntermediateOutputDirectory, Path.GetFileNameWithoutExtension(inputSyntaxTree.FilePath) + $".{sourceHash}.generated.cs");
+                    // var sourceHash = Convert.ToBase64String(hasher.ComputeHash(Encoding.UTF8.GetBytes(inputSyntaxTree.FilePath)), 0, 6).Replace('/', '-');
+                    // Logger.Info($"File \"{inputSyntaxTree.FilePath}\" hashed to {sourceHash}");
+                    var outputFilePath = Path.Combine(this.IntermediateOutputDirectory, Path.GetFileNameWithoutExtension(inputSyntaxTree.FilePath) + $".generated.cs");
 
                     // Code generation is relatively fast, but it's not free.
                     // So skip files that haven't changed since we last generated them.
-                    var outputLastModified = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
+                    // var outputLastModified = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
                     // if (File.GetLastWriteTime(inputSyntaxTree.FilePath) > outputLastModified || assembliesLastModified > outputLastModified)
                     {
                         var retriesLeft = 3;
@@ -149,23 +144,18 @@ namespace CodeGeneration.Roslyn.Engine
                                     progress).ConfigureAwait(false);
 
                                 var outputText = await generatedSyntaxTree.GetTextAsync(cancellationToken);
-                                using (var outputFileStream = File.OpenWrite(outputFilePath))
-                                using (var outputWriter = new StreamWriter(outputFileStream))
-                                {
-                                    outputText.Write(outputWriter);
-
-                                    // Truncate any data that may be beyond this point if the file existed previously.
-                                    await outputWriter.FlushAsync();
-                                    outputFileStream.SetLength(outputFileStream.Position);
-                                }
 
                                 var root = await generatedSyntaxTree?.GetRootAsync(cancellationToken);
                                 var anyTypesGenerated = root?.DescendantNodes().OfType<TypeDeclarationSyntax>().Any() ?? false;
-                                if (!anyTypesGenerated)
+                                if (anyTypesGenerated)
                                 {
-                                    this.emptyGeneratedFiles.Add(outputFilePath);
+                                    using var outputFileStream = File.OpenWrite(outputFilePath);
+                                    using var outputWriter = new StreamWriter(outputFileStream);
+                                    outputText.Write(outputWriter);
+                                    await outputWriter.FlushAsync();
+                                    outputFileStream.SetLength(outputFileStream.Position);
+                                    this.generatedFiles.Add(outputFilePath);
                                 }
-
                                 break;
                             }
                             catch (IOException ex) when (ex.HResult == ProcessCannotAccessFileHR && retriesLeft > 0)
@@ -183,7 +173,6 @@ namespace CodeGeneration.Roslyn.Engine
                         while (true);
                     }
 
-                    this.generatedFiles.Add(outputFilePath);
                 }
             }
 
