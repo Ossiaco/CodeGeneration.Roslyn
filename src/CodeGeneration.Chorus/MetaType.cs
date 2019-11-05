@@ -19,7 +19,9 @@
         private ImmutableArray<MetaType>? _ancestors;
         private ImmutableArray<MetaType>? _allInterfaces;
         private ImmutableArray<MetaType>? _explicitInterfaces;
+        private ImmutableArray<MetaType>? _descendents;
         private MetaType? _directAncestor;
+        private ImmutableArray<PropertyDeclarationSyntax>? _abstractImplementations;
 
         public MetaType(INamedTypeSymbol typeSymbol, BaseTypeDeclarationSyntax declarationSyntax, SemanticModel semanticModel)
         {
@@ -30,6 +32,8 @@
             _allInterfaces = null;
             _explicitInterfaces = null;
             _directAncestor = null;
+            _descendents = null;
+            _abstractImplementations = null;
 
             TypeSymbol = typeSymbol;
             DeclarationSyntax = declarationSyntax;
@@ -43,13 +47,13 @@
                 var field = codeGenAttribute.NamedArguments.FirstOrDefault(v => v.Key == nameof(GenerateClassAttribute.AbstractField)).Value;
                 AbstractAttribute = (INamedTypeSymbol)attribute.Value;
                 AbstractJsonProperty = (string)field.Value;
-                IsAbstract = (AbstractAttribute != null && AbstractJsonProperty != null);
+                HasAbstractJsonProperty = (AbstractAttribute != null && AbstractJsonProperty != null);
             }
             else
             {
                 AbstractJsonProperty = null;
                 AbstractAttribute = null;
-                IsAbstract = false;
+                HasAbstractJsonProperty = false;
             }
 
             var stringEnumAttribute = typeSymbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass.IsOrDerivesFrom<JsonStringEnumAttribute>());
@@ -87,9 +91,14 @@
         public BaseTypeDeclarationSyntax DeclarationSyntax { get; }
         public INamedTypeSymbol TypeSymbol { get; private set; }
         public INamedTypeSymbol AbstractAttribute { get; }
-        public bool IsAbstract { get; }
+        public bool HasAbstractJsonProperty { get; }
         public string AbstractJsonProperty { get; }
         public IdentifierNameSyntax ClassName => (DeclarationSyntax as InterfaceDeclarationSyntax)?.ClassName() ?? SyntaxFactory.IdentifierName(DeclarationSyntax.Identifier);
+        public IdentifierNameSyntax FullyQualifiedClassName
+            => (DeclarationSyntax is InterfaceDeclarationSyntax)
+            ? SyntaxFactory.IdentifierName(SyntaxFactory.Identifier($"{TypeSymbol.ContainingNamespace}.{TypeSymbol.Name.Substring(1)}"))
+            : SyntaxFactory.IdentifierName(SyntaxFactory.Identifier($"{TypeSymbol.ContainingNamespace}.{TypeSymbol.Name}"));
+
         public SyntaxToken ClassNameIdentifier => ClassName.Identifier;
         public SyntaxToken InterfaceNameIdentifier => DeclarationSyntax.Identifier;
 
@@ -108,6 +117,8 @@
             get { return TypeSymbol == null; }
         }
 
+        public NameSyntax Namespace => DeclarationSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.WithoutTrivia();
+        
         public async Task<ImmutableHashSet<MetaProperty>> GetLocalPropertiesAsync()
         {
             if (_localProperties != null)
@@ -231,6 +242,17 @@
             }
             return _directAncestor = new MetaType(null, null, SemanticModel);
         }
+        public async Task<ImmutableArray<MetaType>> GetDirectDescendentsAsync()
+        {
+            if (_descendents != null)
+            {
+                return _descendents.Value;
+            }
+
+            var results = await Task.WhenAll(CodeGen.AllNamedTypeSymbols.Values.Select(async (mt) => this.Equals(await mt.GetDirectAncestorAsync()) ? mt : null));
+            _descendents = results.Where(v => v != null).ToImmutableArray();
+            return _descendents.Value;
+        }
 
         public async Task<IEnumerable<MetaType>> GetAllInterfacesAsync()
         {
@@ -265,6 +287,21 @@
                 .ToImmutableArray();
         }
 
+        public async Task<List<MetaType>> GetResursiveDescendentsAsync()
+        {
+            var result = new List<MetaType>();
+            await GetPropertyOverridesAsync();
+            if (!IsAbstractType)
+            {
+                result.Add(this);
+            }
+
+            var descendents = await GetDirectDescendentsAsync();
+            var arms = (await Task.WhenAll(descendents.Select(d => d.GetResursiveDescendentsAsync()))).SelectMany(a => a);
+            result.AddRange(arms);
+            return result;
+        }
+
         public async Task<IEnumerable<MetaType>> GetDirectAncestorsAsync()
         {
             if (_ancestors != null)
@@ -296,7 +333,43 @@
             return !(await GetDirectAncestorAsync()).IsDefault;
         }
 
+        public async Task<ImmutableArray<PropertyDeclarationSyntax>> GetPropertyOverridesAsync()
+        {
+            if (_abstractImplementations != null)
+            {
+                return _abstractImplementations.Value;
+            }
 
+            async Task<PropertyDeclarationSyntax> GetAbstractPropertyAsync(MetaType ancestor)
+            {
+                var constValue = GetAbstractJsonAttributeValue(ancestor.AbstractAttribute);
+                if (constValue.Kind != TypedConstantKind.Error)
+                {
+                    var expr = constValue.FormatValue();
+                    var inheritedProperties = await GetInheritedPropertiesAsync();
+                    var inheritedProperty = inheritedProperties.SingleOrDefault(p => p.Name == ancestor.AbstractJsonProperty);
+                    var property = inheritedProperty.ArrowPropertyDeclarationSyntax(expr)
+                        .AddModifiers(SyntaxFactory.Token(SyntaxKind.OverrideKeyword));
+                    return property;
+                }
+                return null;
+            }
+
+            // Select out the fields used to serialize an abstract derived types
+            var inheritedMembers = (await GetDirectAncestorsAsync())
+                .Where(a => a.HasAbstractJsonProperty)
+                .ToImmutableArray();
+
+            _abstractImplementations = (await Task.WhenAll(inheritedMembers.Select(GetAbstractPropertyAsync)))
+                .Where(v => v != null)
+                .ToImmutableArray();
+
+            IsAbstractType = HasAbstractJsonProperty || _abstractImplementations.Value.Length < inheritedMembers.Length;
+
+            return _abstractImplementations.Value;
+        }
+
+        public bool IsAbstractType { get; private set; }
 
         public bool IsAssignableFrom(ITypeSymbol type)
         {

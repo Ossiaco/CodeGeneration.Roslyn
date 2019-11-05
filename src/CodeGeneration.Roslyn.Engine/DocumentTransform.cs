@@ -109,22 +109,23 @@ namespace CodeGeneration.Roslyn.Engine
                             SyntaxFactory.ElasticCarriageReturnLineFeed,
                             SyntaxFactory.Trivia(SyntaxFactory.NullableDirectiveTrivia(SyntaxFactory.Token(SyntaxKind.EnableKeyword), true)),
                             SyntaxFactory.ElasticCarriageReturnLineFeed,
-                            SuppressWarnings(8019, "generated redundencies"))
+                            SyntaxFactory.Trivia(GeneratePragmaWarningDirectiveTrivia("8019")))
                     .WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed)
                     .NormalizeWhitespace();
 
             return compilationUnit.SyntaxTree;
         }
 
-        private static SyntaxTrivia SuppressWarnings(int warning, string comment)
-        {
-            return SyntaxFactory.Trivia(
-                        SyntaxFactory.PragmaWarningDirectiveTrivia(SyntaxFactory.Token(SyntaxKind.DisableKeyword), true)
-                        .WithErrorCodes(SyntaxFactory.SingletonSeparatedList<ExpressionSyntax>(
-                            SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(warning)
-                                .WithTrailingTrivia(SyntaxFactory.Space, SyntaxFactory.Comment($"// {comment}")))))
-                        .WithEndOfDirectiveToken(SyntaxFactory.Token(SyntaxFactory.TriviaList(), SyntaxKind.EndOfDirectiveToken, SyntaxFactory.TriviaList(SyntaxFactory.ElasticCarriageReturnLineFeed))));
-        }
+        private static PragmaWarningDirectiveTriviaSyntax GeneratePragmaWarningDirectiveTrivia(params string[] args)
+            => SyntaxFactory.PragmaWarningDirectiveTrivia(
+                SyntaxFactory.Token(SyntaxKind.HashToken),
+                SyntaxFactory.Token(SyntaxKind.PragmaKeyword),
+                SyntaxFactory.Token(SyntaxKind.WarningKeyword),
+                SyntaxFactory.Token(SyntaxKind.DisableKeyword),
+                SyntaxFactory.SeparatedList<ExpressionSyntax>().AddRange(args.Select(a => SyntaxFactory.IdentifierName(a))),
+                SyntaxFactory.Token(SyntaxKind.EndOfDirectiveToken),
+                default(bool));
+
 
         private static ImmutableArray<AttributeData> GetAttributeData(Compilation compilation, SemanticModel document, SyntaxNode syntaxNode)
         {

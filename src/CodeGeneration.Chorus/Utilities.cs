@@ -29,14 +29,5 @@
         {
             return PluralizationService.Singularize(word);
         }
-
-        internal static void Merge(this List<FeatureGenerator> mergedFeatures, FeatureGenerator featureGenerator)
-        {
-            if (featureGenerator.IsApplicable)
-            {
-                featureGenerator.Generate();
-                mergedFeatures.Add(featureGenerator);
-            }
-        }
     }
 }

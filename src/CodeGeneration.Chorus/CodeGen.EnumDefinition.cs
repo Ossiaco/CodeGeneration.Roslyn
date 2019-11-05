@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,22 +13,11 @@ namespace CodeGeneration.Chorus
 {
     static partial class CodeGen
     {
-
-        private static RichGenerationResult GenerateSerializerForEnum(MetaType metaType, CancellationToken cancellationToken)
-        {
-            var usings = SyntaxFactory.List<UsingDirectiveSyntax>();
-            var members = new[] { CreateEnumSerializerClass(metaType) };
-            return new RichGenerationResult() { Members = SyntaxFactory.List(members), Usings = usings };
-        }
-
         private static MemberDeclarationSyntax CreateEnumSerializerClass(MetaType sourceMetaType)
         {
 
             var namespaceSyntax = sourceMetaType.DeclarationSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.WithoutTrivia();
             var identifierSyntax = IdentifierName(sourceMetaType.InterfaceNameIdentifier);
-
-            var mergedFeatures = new List<FeatureGenerator>();
-            mergedFeatures.Merge(new StyleCopCompliance(sourceMetaType));
 
             var className = $"{sourceMetaType.ClassNameIdentifier.Text}JsonSerializer";
             var namespaceName = ParseName(typeof(System.Text.Json.JsonElement).Namespace);
@@ -48,9 +38,6 @@ namespace CodeGeneration.Chorus
             var partialClass = ClassDeclaration(Identifier(className))
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithMembers(List(innerMembers));
-
-            partialClass = mergedFeatures.
-                Aggregate(partialClass, (acc, feature) => feature.ProcessApplyToClassDeclaration(acc));
 
             var declarations = List<MemberDeclarationSyntax>();
             declarations = declarations.Add(partialClass);

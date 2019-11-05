@@ -13,7 +13,7 @@
     internal partial class CodeGen
     {
         private static BaseExpressionSyntax _baseExpression = BaseExpression(SyntaxFactory.Token(SyntaxKind.BaseKeyword));
-        private static FieldDeclarationSyntax CreateConstMember(TypedConstant constant, string name)
+        public static FieldDeclarationSyntax CreateConstMember(TypedConstant constant, string name)
         {
             if (constant.Kind != TypedConstantKind.Error)
             {
@@ -35,13 +35,10 @@
             return null;
         }
 
-        private static async Task<IEnumerable<MemberDeclarationSyntax>> CreateClassDeclarationAsync(MetaType sourceMetaType)
+        private static async Task<MemberDeclarationSyntax> CreateClassDeclarationAsync(MetaType sourceMetaType)
         {
             var innerMembers = new List<MemberDeclarationSyntax>();
             var hasAncestor = await sourceMetaType.HasAncestorAsync();
-
-            var mergedFeatures = new List<FeatureGenerator>();
-            mergedFeatures.Merge(new StyleCopCompliance(sourceMetaType));
 
             PropertyDeclarationSyntax CreatePropertyDeclaration(MetaProperty prop)
             {
@@ -53,49 +50,13 @@
                 return result;
             }
 
-            PropertyDeclarationSyntax ArrowPropertyDeclarationSyntax(string name, MetaProperty value)
-            {
-                var memberAccess = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, sourceMetaType.ClassName, IdentifierName(Identifier(name.ToUpperInvariant())));
-                return value.ArrowPropertyDeclarationSyntax(memberAccess);
-            }
-
-            async Task<(MetaType type, FieldDeclarationSyntax field, PropertyDeclarationSyntax property)> GetAbstractPropertyAsync(MetaType type)
-            {
-                var constField = CreateConstMember(sourceMetaType.GetAbstractJsonAttributeValue(type.AbstractAttribute), type.AbstractJsonProperty);
-                PropertyDeclarationSyntax property = null;
-                if (constField != null)
-                {
-                    var inheritedProperties = await sourceMetaType.GetInheritedPropertiesAsync();
-                    var inheritedProperty = inheritedProperties.SingleOrDefault(p => p.Name == type.AbstractJsonProperty);
-                    if (inheritedProperty.IsDefault)
-                    {
-                        property = null;
-                    }
-                    else
-                    {
-                        property = ArrowPropertyDeclarationSyntax(type.AbstractJsonProperty, inheritedProperty)
-                            .AddModifiers(Token(SyntaxKind.OverrideKeyword));
-                    }
-                }
-                return (type, constField, property);
-            }
-
-            // Select out the fields used to serialize an abstract derived types
-            var inheritedMembers = (await sourceMetaType.GetDirectAncestorsAsync())
-                .Where(a => a.IsAbstract)
-                .ToImmutableArray();
-
-            var abstractImplementations = (await Task.WhenAll(inheritedMembers.Select(GetAbstractPropertyAsync)))
-                .Where(v => v.field != null)
-                .ToImmutableArray();
-
-            var isAbstract = sourceMetaType.IsAbstract || abstractImplementations.Length < inheritedMembers.Length;
+            var abstractImplementations = await sourceMetaType.GetPropertyOverridesAsync();
+            var isAbstract = sourceMetaType.IsAbstractType;
             var localProperties = await sourceMetaType.GetLocalPropertiesAsync();
 
-            innerMembers.AddRange(abstractImplementations.Select(v => v.field));
             innerMembers.AddRange(await sourceMetaType.CreateJsonCtorAsync(hasAncestor));
             innerMembers.AddRange(await CreatePublicCtorAsync(sourceMetaType, hasAncestor));
-            innerMembers.AddRange(abstractImplementations.Select(v => v.property));
+            innerMembers.AddRange(abstractImplementations);
             innerMembers.AddRange(localProperties.Select(CreatePropertyDeclaration));
             if (localProperties.Count > 0)
             {
@@ -104,7 +65,7 @@
 
             var partialClass = ClassDeclaration(sourceMetaType.ClassNameIdentifier)
                  .AddBaseListTypes(sourceMetaType.SemanticModel.AsFullyQualifiedBaseType((TypeDeclarationSyntax)sourceMetaType.DeclarationSyntax).ToArray())
-                 .AddModifiers(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.PartialKeyword))
+                 .AddModifiers(Token(SyntaxKind.InternalKeyword))
                  .WithMembers(List(innerMembers));
 
             if (isAbstract)
@@ -112,8 +73,7 @@
                 partialClass = partialClass.AddModifiers(Token(SyntaxKind.AbstractKeyword));
             }
 
-            partialClass = mergedFeatures.
-                Aggregate(partialClass, (acc, feature) => feature.ProcessApplyToClassDeclaration(acc));
+            partialClass = partialClass.AddModifiers(Token(SyntaxKind.PartialKeyword));
 
             var outerMembers = List<MemberDeclarationSyntax>();
             outerMembers = outerMembers.Add(partialClass);
@@ -128,8 +88,8 @@
                  .WithUsings(usingsDirectives)
                  .WithMembers(outerMembers);
 
-            partialClass = members.ChildNodes().OfType<ClassDeclarationSyntax>().Single(c => c.Identifier.ValueText == sourceMetaType.ClassNameIdentifier.ValueText);
-            return new[] { members, CreateJsonSerializerForinterface(sourceMetaType, ns) };
+            // partialClass = members.ChildNodes().OfType<ClassDeclarationSyntax>().Single(c => c.Identifier.ValueText == sourceMetaType.ClassNameIdentifier.ValueText);
+            return members;  //(new[] { members, await CreateJsonSerializerForinterfaceAsync(sourceMetaType, ns) }).ToImmutableArray();
         }
 
         private static async Task<IEnumerable<MemberDeclarationSyntax>> CreateJsonCtorAsync(this MetaType sourceMetaType, bool hasAncestor)
@@ -137,35 +97,15 @@
             var paramName = IdentifierName("json");
             var param = Parameter(paramName.Identifier).WithType(ParseName(nameof(System.Text.Json.JsonElement)));
 
-            InvocationExpressionSyntax GetJsonValue(MetaProperty metaProperty)
-            {
-                var nullable = metaProperty.IsNullable ? "Try" : "";
-                var array = metaProperty.IsCollection ? "Array" : "";
-                var typeName = metaProperty.TypeClassName;
-                return InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, paramName, IdentifierName($"{nullable}Get{typeName}{array}"))
-                           .WithOperatorToken(Token(SyntaxKind.DotToken)))
-                           .WithArgumentList(
-                               ArgumentList(
-                                   SingletonSeparatedList(
-                                       Argument(
-                                           LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(TriviaList(), metaProperty.NameAsJsonProperty, string.Empty, TriviaList()))
-                                           )
-                                       )
-                                   )
-                               .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
-                               .WithCloseParenToken(Token(SyntaxKind.CloseParenToken))
-                               );
-            }
-
             var body = new List<StatementSyntax>();
 
-            if (sourceMetaType.IsAbstract)
+            if (sourceMetaType.HasAbstractJsonProperty)
             {
                 var f = (await sourceMetaType.GetLocalPropertiesAsync()).Single(p => p.Name == sourceMetaType.AbstractJsonProperty);
                 var thisExpresion = Syntax.ThisDot(f.NameAsProperty);
 
                 var expression = IfStatement(
-                    BinaryExpression(SyntaxKind.NotEqualsExpression, GetJsonValue(f), Syntax.ThisDot(f.NameAsProperty)),
+                    BinaryExpression(SyntaxKind.NotEqualsExpression, f.GetJsonValue(paramName), Syntax.ThisDot(f.NameAsProperty)),
                     ThrowStatement(
                         ObjectCreationExpression(Syntax.GetTypeSyntax(typeof(System.Text.Json.JsonException))).AddArgumentListArguments(
                             Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"Invalid {sourceMetaType.AbstractJsonProperty} specified."))))));
@@ -180,11 +120,11 @@
             body.AddRange(
                 (await sourceMetaType.GetLocalPropertiesAsync()).Where(IsRequired).Select(f =>
                 ExpressionStatement(
-                    AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, IdentifierName(f.NameAsProperty.Identifier), GetJsonValue(f))))
+                    AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, IdentifierName(f.NameAsProperty.Identifier), f.GetJsonValue(paramName))))
                 );
 
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
-                .AddModifiers(Token(sourceMetaType.IsAbstract ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
+                .AddModifiers(Token(sourceMetaType.HasAbstractJsonProperty ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { param })))
                 // .AddAttributeLists(SyntaxFactory.AttributeList().AddAttributes(ObsoletePublicCtor))
                 .WithBody(Block(body));
@@ -264,7 +204,7 @@
 
             // var thisArguments = CreateArgumentList(_applyFromMetaType.AllProperties);
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
-                .AddModifiers(Token(sourceMetaType.IsAbstract ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
+                .AddModifiers(Token(sourceMetaType.HasAbstractJsonProperty ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
                 .WithParameterList(CreateParameterList((await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired)))
                 .WithBody(body);
 

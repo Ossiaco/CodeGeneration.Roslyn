@@ -37,6 +37,7 @@
 
         internal static ImmutableDictionary<INamedTypeSymbol, MetaType> AllNamedTypeSymbols { get; private set; }
         internal static ImmutableHashSet<INamedTypeSymbol> IntrinsicSymbols { get; private set; }
+        internal static ImmutableDictionary<INamedTypeSymbol, string> FormatStrings { get; private set; }
         public static INamedTypeSymbol IJsonSerializeableType;
 
 
@@ -88,25 +89,9 @@
                 var typeSymbol = context.SemanticModel.GetDeclaredSymbol(applyTo);
                 if (typeSymbol != null)
                 {
-                    var key = typeSymbol.OriginalDefinition ?? typeSymbol;
-                    if (TryAdd(ref CheckedTypes, key))
+                    if (AllNamedTypeSymbols.TryGetValue(typeSymbol, out var metaType))
                     {
-                        if (AllNamedTypeSymbols.TryGetValue(typeSymbol, out var metaType))
-                        {
-                            var result = await GenerateClassForInterfaceAsync(metaType, cancellationToken).ConfigureAwait(false);
-                            result = await GenerateDependenciesAsync(metaType, result, progress, cancellationToken);
-
-                            var tasks = AllNamedTypeSymbols.Values.Where(to => IsAssignableFrom(key, to.TypeSymbol)).Select(to => GenerateAsync(to, progress, cancellationToken));
-                            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-                            foreach (var r in results)
-                            {
-                                result.AttributeLists = result.AttributeLists.AddRange(r.AttributeLists);
-                                result.Usings = result.Usings.AddRange(r.Usings);
-                                result.Externs = result.Externs.AddRange(r.Externs);
-                                result.Members = result.Members.AddRange(r.Members);
-                            }
-                            return result;
-                        }
+                        return new RichGenerationResult() { Members = SyntaxFactory.List(await GenerateAsync(metaType, progress, cancellationToken)) };
                     }
                 }
             }
@@ -128,7 +113,7 @@
                     new LocalizableResourceString(nameof(DiagnosticStrings.OCC002), DiagnosticStrings.ResourceManager, typeof(DiagnosticStrings)),
                     "Design", DiagnosticSeverity.Error, isEnabledByDefault: true);
 
-        private static async Task<RichGenerationResult> GenerateAsync(MetaType metaType, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        private static async Task<ImmutableArray<MemberDeclarationSyntax>> GenerateAsync(MetaType metaType, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
         {
             try
             {
@@ -140,10 +125,18 @@
                         switch (key.TypeKind)
                         {
                             case TypeKind.Interface:
-                                var result = await GenerateClassForInterfaceAsync(metaType, cancellationToken).ConfigureAwait(false);
-                                return await GenerateDependenciesAsync(metaType, result, progress, cancellationToken).ConfigureAwait(false);
+                                var result = await GenerateDependenciesAsync(metaType, progress, cancellationToken).ConfigureAwait(false);
+                                result = result.Add(await CreateClassDeclarationAsync(metaType).ConfigureAwait(false));
+                                var descendents = await metaType.GetDirectDescendentsAsync();
+                                var tasks = await Task.WhenAll(descendents.Select(to => GenerateAsync(to, progress, cancellationToken))).ConfigureAwait(false);
+                                foreach (var r in tasks)
+                                {
+                                    result = result.AddRange(r);
+                                }
+                                result = result.Add(await CreateJsonSerializerForinterfaceAsync(metaType));
+                                return result;
                             case TypeKind.Enum:
-                                return GenerateSerializerForEnum(metaType, cancellationToken);
+                                return ImmutableArray<MemberDeclarationSyntax>.Empty.Add(CreateEnumSerializerClass(metaType));
                             default:
                                 progress.Report(Diagnostic.Create(NotSupportedDescriptor, metaType.DeclarationSyntax.GetLocation(), key.TypeKind, key.Name));
                                 break;
@@ -154,35 +147,25 @@
             catch (Exception e)
             {
                 progress.Report(Diagnostic.Create(UnexpectedDescriptor, metaType.DeclarationSyntax?.GetLocation() ?? Location.None, e.Message));
-
             }
-            return new RichGenerationResult();
+            return ImmutableArray<MemberDeclarationSyntax>.Empty;
         }
 
-        private static async Task<RichGenerationResult> GenerateDependenciesAsync(MetaType metaType, RichGenerationResult result, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        private static async Task<ImmutableArray<MemberDeclarationSyntax>> GenerateDependenciesAsync(MetaType metaType, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
         {
             var allProperties = await metaType.GetLocalPropertiesAsync();
             var dependencies = allProperties.Select(p => p.SafeType).Where(s => !IntrinsicSymbols.Contains(s)).ToImmutableArray();
+            var result = ImmutableArray<MemberDeclarationSyntax>.Empty;
             if (dependencies.Length > 0)
             {
                 var tasks = AllNamedTypeSymbols.Where(to => dependencies.Contains(to.Key)).Select(to => GenerateAsync(to.Value, progress, cancellationToken));
                 var results = await Task.WhenAll(tasks).ConfigureAwait(false);
                 foreach (var r in results)
                 {
-                    result.AttributeLists = result.AttributeLists.AddRange(r.AttributeLists);
-                    result.Usings = result.Usings.AddRange(r.Usings);
-                    result.Externs = result.Externs.AddRange(r.Externs);
-                    result.Members = result.Members.AddRange(r.Members);
+                    result = result.AddRange(r);
                 }
             }
             return result;
-        }
-
-        private static async Task<RichGenerationResult> GenerateClassForInterfaceAsync(MetaType metaType, CancellationToken cancellationToken)
-        {
-            var usings = SyntaxFactory.List<UsingDirectiveSyntax>();
-            var members = await CreateClassDeclarationAsync(metaType);
-            return new RichGenerationResult() { Members = SyntaxFactory.List(members), Usings = usings };
         }
 
         private static bool IsAssignableFrom(INamedTypeSymbol from, INamedTypeSymbol to)

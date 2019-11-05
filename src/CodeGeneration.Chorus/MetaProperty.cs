@@ -8,6 +8,7 @@
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using System.Text.Json.Serialization;
     using System.Diagnostics;
+    using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
     [DebuggerDisplay("{Symbol?.Name}")]
     internal class MetaProperty
@@ -33,7 +34,7 @@
         public string Name => Symbol.Name;
         public bool IsJsonSerializeable { get; }
 
-        public IdentifierNameSyntax NameAsProperty => SyntaxFactory.IdentifierName(Symbol.Name.ToPascalCase());
+        public IdentifierNameSyntax NameAsProperty => IdentifierName(Symbol.Name.ToPascalCase());
 
 
         public IdentifierNameSyntax NameAsField
@@ -41,7 +42,7 @@
             get
             {
                 // Verify.Operation(!IsDefault, "Default instance.");
-                return SyntaxFactory.IdentifierName($"_{Symbol.Name.ToCamelCase()}");
+                return IdentifierName($"_{Symbol.Name.ToCamelCase()}");
             }
         }
 
@@ -63,7 +64,7 @@
         {
             get
             {
-                return SyntaxFactory.IdentifierName(Symbol.Name.ToCamelCase());
+                return IdentifierName(Symbol.Name.ToCamelCase());
             }
         }
 
@@ -109,6 +110,24 @@
 
         public bool IsDefault => Symbol == null;
 
+        public InvocationExpressionSyntax GetJsonValue(IdentifierNameSyntax paramName)
+        {
+            return InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, paramName, GetJsonValueName())
+                       .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                       .WithArgumentList(
+                           ArgumentList(SingletonSeparatedList(Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(TriviaList(), NameAsJsonProperty, string.Empty, TriviaList())))))
+                               .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                               .WithCloseParenToken(Token(SyntaxKind.CloseParenToken))
+                           );
+        }
+
+        public IdentifierNameSyntax GetJsonValueName()
+        {
+            var nullable = IsNullable ? "Try" : "";
+            var array = IsCollection ? "Array" : "";
+            var typeName = TypeClassName;
+            return IdentifierName($"{nullable}Get{typeName}{array}");
+        }
 
         public bool IsAssignableFrom(ITypeSymbol type)
         {
@@ -138,10 +157,10 @@
 
         public PropertyDeclarationSyntax ArrowPropertyDeclarationSyntax(ExpressionSyntax valueSyntax)
         {
-            return SyntaxFactory.PropertyDeclaration(TypeSyntax, NameAsProperty.Identifier)
-                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
-                    .WithExpressionBody(SyntaxFactory.ArrowExpressionClause(SyntaxFactory.Token(SyntaxKind.EqualsGreaterThanToken), valueSyntax))
-                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            return PropertyDeclaration(TypeSyntax, NameAsProperty.Identifier)
+                    .AddModifiers(Token(SyntaxKind.PublicKeyword))
+                    .WithExpressionBody(ArrowExpressionClause(Token(SyntaxKind.EqualsGreaterThanToken), valueSyntax))
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
         public PropertyDeclarationSyntax PropertyDeclarationSyntax
@@ -150,25 +169,25 @@
             {
                 if (Symbol.SetMethod != null && Symbol.GetMethod != null)
                 {
-                    return SyntaxFactory.PropertyDeclaration(TypeSyntax, NameAsProperty.Identifier)
-                            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                    return PropertyDeclaration(TypeSyntax, NameAsProperty.Identifier)
+                            .AddModifiers(Token(SyntaxKind.PublicKeyword))
                             .AddAccessorListAccessors(
-                                SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
-                                SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)));
+                                AccessorDeclaration(SyntaxKind.GetAccessorDeclaration).WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+                                AccessorDeclaration(SyntaxKind.SetAccessorDeclaration).WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
                 }
                 else if (Symbol.SetMethod == null)
                 {
-                    return SyntaxFactory.PropertyDeclaration(TypeSyntax, NameAsProperty.Identifier)
-                            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                    return PropertyDeclaration(TypeSyntax, NameAsProperty.Identifier)
+                            .AddModifiers(Token(SyntaxKind.PublicKeyword))
                             .AddAccessorListAccessors(
-                                SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))/*,
+                                AccessorDeclaration(SyntaxKind.GetAccessorDeclaration).WithSemicolonToken(Token(SyntaxKind.SemicolonToken))/*,
                                 SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)).AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword))*/);
                 }
-                return SyntaxFactory.PropertyDeclaration(TypeSyntax, NameAsProperty.Identifier)
-                        .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                return PropertyDeclaration(TypeSyntax, NameAsProperty.Identifier)
+                        .AddModifiers(Token(SyntaxKind.PublicKeyword))
                         .AddAccessorListAccessors(
                             /*SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)).AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword)),*/
-                            SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)));
+                            AccessorDeclaration(SyntaxKind.SetAccessorDeclaration).WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
             }
         }
 
