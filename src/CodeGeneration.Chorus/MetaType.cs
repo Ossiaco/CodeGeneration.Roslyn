@@ -371,6 +371,7 @@
 
         public bool IsAbstractType { get; private set; }
 
+
         public bool IsAssignableFrom(ITypeSymbol type)
         {
             if (type == null)

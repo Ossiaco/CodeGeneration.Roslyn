@@ -194,14 +194,16 @@
         {
             static bool isRequired(MetaProperty p) => !p.IsReadonly && !p.IsAbstract && !p.HasSetMethod;
 
-            var body = Block(
-                (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired).Select(f => ExpressionStatement(
+            static ExpressionStatementSyntax GetExpression(MetaProperty f) => ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         IdentifierName(f.NameAsProperty.Identifier),
-                        IdentifierName(f.NameAsArgument.Identifier)))));
+                        IdentifierName(f.NameAsArgument.Identifier)));
 
-
+            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired).ToImmutableArray();
+            var body = Block(localProperties.Where(p => !p.IsNullable).Select(GetExpression)
+                    .Concat(localProperties.Where(p => p.IsNullable).Select(GetExpression)));
+            
             // var thisArguments = CreateArgumentList(_applyFromMetaType.AllProperties);
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
                 .AddModifiers(Token(sourceMetaType.HasAbstractJsonProperty ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
