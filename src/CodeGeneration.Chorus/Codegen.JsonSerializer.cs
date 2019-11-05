@@ -68,7 +68,6 @@
                     .AddSizes(OmittedArraySizeExpression()));
 
             var result = new List<MethodDeclarationSyntax>();
-            var newObjectExpression = ObjectCreationExpression(classNameSyntax, ArgumentList(SingletonSeparatedList(Argument(_jsonElementParameterName))), null);
 
             if (sourceMetaType.IsAbstractType)
             {
@@ -76,6 +75,8 @@
             }
             else
             {
+                var newObjectExpression = ObjectCreationExpression(classNameSyntax, ArgumentList(SingletonSeparatedList(Argument(_jsonElementParameterName))), null);
+
                 result.Add(MethodDeclaration(interfaceType, getMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter })))
@@ -99,6 +100,18 @@
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter, _propertyNameParameter })))
                 .WithExpressionBody(ArrowExpressionClause(callGetObject("TryGetObject")))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+
+            var getObjectArry = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonElementParameterName, IdentifierName("GetObjectArray"))
+               .WithOperatorToken(Token(SyntaxKind.DotToken)))
+               .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(methodNameParameter) }))
+                   .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                   .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+            result.Add(MethodDeclaration(interfaceArrayType, getArrayMethodName)
+                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter })))
+                .WithExpressionBody(ArrowExpressionClause(getObjectArry))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
 
             result.Add(MethodDeclaration(interfaceArrayType, getArrayMethodName)

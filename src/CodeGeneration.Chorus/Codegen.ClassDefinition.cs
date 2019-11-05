@@ -200,19 +200,25 @@
                         IdentifierName(f.NameAsProperty.Identifier),
                         IdentifierName(f.NameAsArgument.Identifier)));
 
-            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired).ToImmutableArray();
-            var body = Block(localProperties.Where(p => !p.IsNullable).Select(GetExpression)
-                    .Concat(localProperties.Where(p => p.IsNullable).Select(GetExpression)));
-            
-            // var thisArguments = CreateArgumentList(_applyFromMetaType.AllProperties);
+            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired);
+            var body = Block(localProperties.Select(GetExpression));
+
+            var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired);
+            var orderedArguments = allProperties.Where(p => !p.IsNullable).OrderBy(p => p.Name)
+                    .Concat(allProperties.Where(p => p.IsNullable).OrderBy(p => p.Name));
+
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
                 .AddModifiers(Token(sourceMetaType.HasAbstractJsonProperty ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
-                .WithParameterList(CreateParameterList((await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired)))
+                .WithParameterList(CreateParameterList(orderedArguments))
                 .WithBody(body);
 
             if (hasAncestor)
             {
-                var props = (await sourceMetaType.GetInheritedPropertiesAsync()).Where(isRequired).ToList();
+                var props = (await sourceMetaType.GetInheritedPropertiesAsync())
+                    .Where(isRequired)
+                    .OrderBy(p => p.Name)
+                    .ToList();
+
                 if (props.Count > 0)
                 {
                     var arguments = CreateAssignmentList(props);

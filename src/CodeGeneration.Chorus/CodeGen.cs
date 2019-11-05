@@ -275,7 +275,6 @@
             properties = SortRequiredPropertiesFirst(properties);
 
             ParameterSyntax SetTypeAndDefault(ParameterSyntax p, MetaProperty f) => f.IsNullable
-                 //? p.WithType(f.TypeSyntax).WithDefault(SyntaxFactory.EqualsValueClause(f.Type.IsValueType ? SyntaxFactory.DefaultExpression((f.TypeSyntax)) : (ExpressionSyntax)Syntax.Generator.NullLiteralExpression()))
                  ? p.WithType(f.TypeSyntax).WithDefault(SyntaxFactory.EqualsValueClause((ExpressionSyntax)Syntax.Generator.NullLiteralExpression()))
                  : p.WithType(f.TypeSyntax);
 
