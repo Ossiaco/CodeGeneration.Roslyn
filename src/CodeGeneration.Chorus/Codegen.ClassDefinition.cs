@@ -162,7 +162,7 @@
 
             bool IsRequired(MetaProperty prop)
             {
-                return prop.IsIgnored || sourceMetaType.AbstractJsonProperty == prop.Name ? false : true;
+                return !prop.IsIgnored;
             }
 
             var properties = await sourceMetaType.GetLocalPropertiesAsync();
