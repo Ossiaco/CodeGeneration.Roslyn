@@ -49,4 +49,15 @@ namespace CodeGeneration.Chorus
         /// </summary>
         public JsonStringEnumFormat Format { get; }
     }
+
+     public static class JsonPropertyNameAttributeExtensions
+    {
+        /// <summary>
+        /// TypeScriptPropertyName.
+        /// </summary>
+        /// <param name="attribute">The attribute<see cref="JsonPropertyNameAttribute"/>.</param>
+        /// <returns>A <see cref="string"/>.</returns>
+        public static string TypeScriptPropertyName(this JsonPropertyNameAttribute attribute) => attribute.Name.Contains("-") ? $"\"{attribute.Name}\"" : attribute.Name;
+    }
+
 }

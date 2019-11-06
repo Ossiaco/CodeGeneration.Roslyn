@@ -65,7 +65,7 @@
 
             var partialClass = ClassDeclaration(sourceMetaType.ClassNameIdentifier)
                  .AddBaseListTypes(sourceMetaType.SemanticModel.AsFullyQualifiedBaseType((TypeDeclarationSyntax)sourceMetaType.DeclarationSyntax).ToArray())
-                 .AddModifiers(Token(SyntaxKind.InternalKeyword))
+                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                  .WithMembers(List(innerMembers));
 
             if (isAbstract)
@@ -88,8 +88,7 @@
                  .WithUsings(usingsDirectives)
                  .WithMembers(outerMembers);
 
-            // partialClass = members.ChildNodes().OfType<ClassDeclarationSyntax>().Single(c => c.Identifier.ValueText == sourceMetaType.ClassNameIdentifier.ValueText);
-            return members;  //(new[] { members, await CreateJsonSerializerForinterfaceAsync(sourceMetaType, ns) }).ToImmutableArray();
+            return members;
         }
 
         private static async Task<IEnumerable<MemberDeclarationSyntax>> CreateJsonCtorAsync(this MetaType sourceMetaType, bool hasAncestor)
@@ -124,9 +123,14 @@
                 );
 
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
-                .AddModifiers(Token(sourceMetaType.HasAbstractJsonProperty ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
-                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { param })))
-                // .AddAttributeLists(SyntaxFactory.AttributeList().AddAttributes(ObsoletePublicCtor))
+                .AddModifiers(Token(SyntaxKind.InternalKeyword));
+
+            if (sourceMetaType.HasAbstractJsonProperty)
+            {
+                ctor = ctor.AddModifiers(Token(SyntaxKind.ProtectedKeyword));
+            }
+
+            ctor = ctor.WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { param })))
                 .WithBody(Block(body));
 
             if (hasAncestor)
