@@ -6,6 +6,7 @@ namespace CodeGeneration.Chorus
 {
     using System;
     using System.Diagnostics;
+    using System.Text.Json.Serialization;
 
     /// <summary>
     /// Defines the JsonStringEnumFormat.
@@ -48,16 +49,6 @@ namespace CodeGeneration.Chorus
         /// Gets the Format.
         /// </summary>
         public JsonStringEnumFormat Format { get; }
-    }
-
-     public static class JsonPropertyNameAttributeExtensions
-    {
-        /// <summary>
-        /// TypeScriptPropertyName.
-        /// </summary>
-        /// <param name="attribute">The attribute<see cref="JsonPropertyNameAttribute"/>.</param>
-        /// <returns>A <see cref="string"/>.</returns>
-        public static string TypeScriptPropertyName(this JsonPropertyNameAttribute attribute) => attribute.Name.Contains("-") ? $"\"{attribute.Name}\"" : attribute.Name;
     }
 
 }
