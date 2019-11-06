@@ -123,15 +123,10 @@
                 );
 
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
-                .AddModifiers(Token(SyntaxKind.InternalKeyword));
-
-            if (sourceMetaType.HasAbstractJsonProperty)
-            {
-                ctor = ctor.AddModifiers(Token(SyntaxKind.ProtectedKeyword));
-            }
+                .AddModifiers(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.ProtectedKeyword));
 
             ctor = ctor.WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { param })))
-                .WithBody(Block(body));
+               .WithBody(Block(body));
 
             if (hasAncestor)
             {
