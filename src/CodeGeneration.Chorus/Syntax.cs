@@ -18,9 +18,6 @@ namespace CodeGeneration.Chorus
     using System.Threading;
     using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-    /// <summary>
-    /// Defines the <see cref="Syntax" />
-    /// </summary>
     internal static class Syntax
     {
         internal static SyntaxGenerator Generator = SyntaxGenerator.GetGenerator(new AdhocWorkspace(), LanguageNames.CSharp);
@@ -50,7 +47,7 @@ namespace CodeGeneration.Chorus
             if (value.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
                 var typeSymbol = ((INamedTypeSymbol)model.GetTypeInfo(nameSyntax).Type);
-                if (!typeSymbol.Equals(CodeGen.IJsonSerializeableType))
+                if (!typeSymbol.Equals(CodeGen.JsonSerializeableType))
                 {
                     SimpleNameSyntax leafName = IdentifierName(typeSymbol.Name.Substring(1));
                     TypeSyntax typeSyntax = (typeSymbol.ContainingSymbol as INamespaceOrTypeSymbol)?.GetFullyQualifiedSymbolName(NullableAnnotation.None) is NameSyntax parent ? (NameSyntax)QualifiedName(parent, leafName) : leafName;
@@ -59,7 +56,6 @@ namespace CodeGeneration.Chorus
             }
             yield return SimpleBaseType(ParseName(value.Identifier.ValueText));
         }
-
 
         internal static MemberAccessExpressionSyntax BaseDot(SimpleNameSyntax memberAccess)
         {
@@ -342,10 +338,6 @@ namespace CodeGeneration.Chorus
                 ArgumentList(SingletonSeparatedList(Argument(expression))));
         }
 
-        /// <summary>
-        /// The GenerateNullLiteral
-        /// </summary>
-        /// <returns>The <see cref="ExpressionSyntax"/></returns>
         private static ExpressionSyntax GenerateNullLiteral() => LiteralExpression(SyntaxKind.NullLiteralExpression);
     }
 }

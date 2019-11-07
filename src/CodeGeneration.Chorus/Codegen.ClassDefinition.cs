@@ -1,18 +1,22 @@
-﻿namespace CodeGeneration.Chorus
+﻿//------------------------------------------------------------
+// Copyright (c) Ossiaco Inc. All rights reserved.
+//------------------------------------------------------------
+
+namespace CodeGeneration.Chorus
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Collections.Immutable;
-    using System.Linq;
-    using System.Threading.Tasks;
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Threading.Tasks;
     using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
     internal partial class CodeGen
     {
         private static BaseExpressionSyntax _baseExpression = BaseExpression(SyntaxFactory.Token(SyntaxKind.BaseKeyword));
+
         public static FieldDeclarationSyntax CreateConstMember(TypedConstant constant, string name)
         {
             if (constant.Kind != TypedConstantKind.Error)
@@ -55,7 +59,14 @@
             var localProperties = await sourceMetaType.GetLocalPropertiesAsync();
 
             innerMembers.AddRange(await sourceMetaType.CreateJsonCtorAsync(hasAncestor));
-            innerMembers.AddRange(await CreatePublicCtorAsync(sourceMetaType, hasAncestor));
+            if (sourceMetaType.IsAssignableFrom(_responseMessageType))
+            {
+                innerMembers.AddRange(await CreateResponseCtorAsync(sourceMetaType));
+            }
+            else
+            {
+                innerMembers.AddRange(await CreatePublicCtorAsync(sourceMetaType, hasAncestor));
+            }
             innerMembers.AddRange(abstractImplementations);
             innerMembers.AddRange(localProperties.Select(CreatePropertyDeclaration));
             if (localProperties.Count > 0)
@@ -138,6 +149,102 @@
             return new[] { ctor };
         }
 
+        private static async Task<IEnumerable<MemberDeclarationSyntax>> CreatePublicCtorAsync(MetaType sourceMetaType, bool hasAncestor)
+        {
+            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(p => p.isRequired);
+            var body = Block(localProperties.Select(p => p.PropertyAssignment));
+
+            var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(p => p.isRequired);
+            var orderedArguments = allProperties.Where(p => !p.IsNullable).OrderBy(p => p.Name)
+                    .Concat(allProperties.Where(p => p.IsNullable).OrderBy(p => p.Name));
+
+            var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                .AddModifiers(Token(sourceMetaType.HasAbstractJsonProperty ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, CreateParameterList(orderedArguments))))
+                .WithBody(body);
+
+            if (hasAncestor)
+            {
+                var props = (await sourceMetaType.GetInheritedPropertiesAsync())
+                    .Where(p => p.isRequired)
+                    .OrderBy(p => p.Name)
+                    .ToList();
+
+                if (props.Count > 0)
+                {
+                    var arguments = CreateAssignmentList(props);
+                    ctor = ctor.WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
+                }
+            }
+            return new[] { ctor };
+        }
+
+        private static async Task<IEnumerable<MemberDeclarationSyntax>> CreateResponseCtorAsync(MetaType sourceMetaType)
+        {
+            var hasAncestor = !SymbolEqualityComparer.Default.Equals(_responseMessageType, sourceMetaType.TypeSymbol);
+            var requestParam = IdentifierName("resquest");
+            var requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Common.Messaging.IRequestMessage"));
+
+            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(p => p.isRequired);
+            var body = Block(localProperties.Select(p => p.PropertyAssignment));
+
+            static bool isRequired(MetaProperty p)
+                => p.isRequired && !SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _responseMessageType);
+
+            var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired);
+            var orderedArguments = allProperties.Where(p => !p.IsNullable).OrderBy(p => p.Name)
+                    .Concat(allProperties.Where(p => p.IsNullable).OrderBy(p => p.Name));
+
+            var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                .AddModifiers(Token(SyntaxKind.PublicKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { requestParamType }.Concat(CreateParameterList(orderedArguments)))))
+               .WithBody(body);
+
+            if (hasAncestor)
+            {
+                var props = (await sourceMetaType.GetInheritedPropertiesAsync())
+                    .Where(p => p.isRequired)
+                    .OrderBy(p => p.Name)
+                    .ToList();
+
+                if (props.Count > 0)
+                {
+                    var arguments = CreateAssignmentList(props);
+                    ctor = ctor.WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
+                }
+            }
+
+            return new[] { ctor, await CreateResponseErrorCtorAsync(sourceMetaType, hasAncestor) };
+        }
+
+        private static async Task<MemberDeclarationSyntax> CreateResponseErrorCtorAsync(MetaType sourceMetaType, bool hasAncestor)
+        {
+            var requestParam = IdentifierName("resquest");
+            var requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Common.Messaging.IRequestMessage"));
+
+            var exceptionParam = IdentifierName("error");
+            var exceptionParamType = Parameter(exceptionParam.Identifier).WithType(ParseName(nameof(Exception)));
+
+            var body = new List<StatementSyntax>();
+
+            var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                .AddModifiers(Token(SyntaxKind.PublicKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { requestParamType, exceptionParamType })))
+               .WithBody(Block(body));
+
+            if (hasAncestor)
+            {
+                var arguments = CreateAssignmentList(new[] { requestParam, exceptionParam });
+                ctor = ctor.WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
+            }
+            else
+            {
+                await Task.Delay(1);
+            }
+
+            return ctor;
+        }
+
         private static async Task<MethodDeclarationSyntax> ToJsonMethodAsync(this MetaType sourceMetaType)
         {
 
@@ -186,45 +293,6 @@
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), virtualOrOverride)
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterParameter })))
                 .WithBody(Block(body));
-        }
-
-
-        private static async Task<IEnumerable<MemberDeclarationSyntax>> CreatePublicCtorAsync(MetaType sourceMetaType, bool hasAncestor)
-        {
-            static bool isRequired(MetaProperty p) => !p.IsReadonly && !p.IsAbstract && !p.HasSetMethod;
-
-            static ExpressionStatementSyntax GetExpression(MetaProperty f) => ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        IdentifierName(f.NameAsProperty.Identifier),
-                        IdentifierName(f.NameAsArgument.Identifier)));
-
-            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired);
-            var body = Block(localProperties.Select(GetExpression));
-
-            var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired);
-            var orderedArguments = allProperties.Where(p => !p.IsNullable).OrderBy(p => p.Name)
-                    .Concat(allProperties.Where(p => p.IsNullable).OrderBy(p => p.Name));
-
-            var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
-                .AddModifiers(Token(sourceMetaType.HasAbstractJsonProperty ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
-                .WithParameterList(CreateParameterList(orderedArguments))
-                .WithBody(body);
-
-            if (hasAncestor)
-            {
-                var props = (await sourceMetaType.GetInheritedPropertiesAsync())
-                    .Where(isRequired)
-                    .OrderBy(p => p.Name)
-                    .ToList();
-
-                if (props.Count > 0)
-                {
-                    var arguments = CreateAssignmentList(props);
-                    ctor = ctor.WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
-                }
-            }
-            return new[] { ctor };
         }
     }
 }

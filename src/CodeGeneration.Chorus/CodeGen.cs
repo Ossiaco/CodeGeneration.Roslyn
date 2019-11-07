@@ -38,12 +38,14 @@
         internal static ImmutableDictionary<INamedTypeSymbol, MetaType> AllNamedTypeSymbols { get; private set; }
         internal static ImmutableHashSet<INamedTypeSymbol> IntrinsicSymbols { get; private set; }
         internal static ImmutableDictionary<INamedTypeSymbol, string> FormatStrings { get; private set; }
-        public static INamedTypeSymbol IJsonSerializeableType;
+        public static INamedTypeSymbol JsonSerializeableType;
+        private static INamedTypeSymbol _responseMessageType;
 
 
         private async static Task<ImmutableDictionary<INamedTypeSymbol, MetaType>> GetAllTypeDefinitionsAsync(CSharpCompilation compilation)
         {
-            IJsonSerializeableType = compilation.GetTypeByMetadataName(typeof(IJsonSerialize).FullName);
+            JsonSerializeableType = compilation.GetTypeByMetadataName(typeof(IJsonSerialize).FullName);
+            _responseMessageType = compilation.GetTypeByMetadataName("Chorus.Common.Messaging.IResponseMessage");
             var result = new ConcurrentDictionary<INamedTypeSymbol, MetaType>(SymbolEqualityComparer.Default);
 
             async Task TryAdd(INamedTypeSymbol typeSymbol)
@@ -270,7 +272,7 @@
             return fields.Where(f => f.IsRequired).Concat(fields.Where(f => !f.IsRequired));
         }
 
-        private static ParameterListSyntax CreateParameterList(IEnumerable<MetaProperty> properties)
+        private static IEnumerable<ParameterSyntax> CreateParameterList(IEnumerable<MetaProperty> properties)
         {
             properties = SortRequiredPropertiesFirst(properties);
 
@@ -278,10 +280,7 @@
                  ? p.WithType(f.TypeSyntax).WithDefault(SyntaxFactory.EqualsValueClause((ExpressionSyntax)Syntax.Generator.NullLiteralExpression()))
                  : p.WithType(f.TypeSyntax);
 
-            return SyntaxFactory.ParameterList(
-                Syntax.JoinSyntaxNodes(
-                    SyntaxKind.CommaToken,
-                    properties.Select(f => SetTypeAndDefault(SyntaxFactory.Parameter(f.NameAsArgument.Identifier), f))));
+            return properties.Select(f => SetTypeAndDefault(SyntaxFactory.Parameter(f.NameAsArgument.Identifier), f));
         }
 
         private static ArgumentListSyntax CreateArgumentList(IEnumerable<MetaProperty> properties)
@@ -294,15 +293,17 @@
                                    NoneToken,
                                    Syntax.ThisDot(f.NameAsProperty)))));
         }
-        private static ArgumentListSyntax CreateAssignmentList(IEnumerable<MetaProperty> properties)
+        private static ArgumentListSyntax CreateAssignmentList(IEnumerable<IdentifierNameSyntax> properties)
         {
             return SyntaxFactory.ArgumentList(Syntax.JoinSyntaxNodes(
                            SyntaxKind.CommaToken,
                            properties.Select(f =>
                                SyntaxFactory.Argument(
-                                   SyntaxFactory.NameColon(f.NameAsArgument),
+                                   SyntaxFactory.NameColon(f),
                                    NoneToken,
-                                   f.NameAsArgument))));
+                                   f))));
         }
+
+        private static ArgumentListSyntax CreateAssignmentList(IEnumerable<MetaProperty> properties) => CreateAssignmentList(properties.Select(p => p.NameAsArgument));
     }
 }
