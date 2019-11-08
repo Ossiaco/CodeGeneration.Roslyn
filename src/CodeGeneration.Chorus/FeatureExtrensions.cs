@@ -15,7 +15,7 @@
                 .Where(ctor => !ctor.Modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword))).Single();
         }
 
-        public static bool IsPropertyRequired(this IPropertySymbol propertySymbol) => propertySymbol.NullableAnnotation == NullableAnnotation.NotAnnotated;
+        public static bool IsPropertyNonNulable(this IPropertySymbol propertySymbol) => propertySymbol.NullableAnnotation == NullableAnnotation.NotAnnotated;
         public static bool IsPropertyNullable(this IPropertySymbol propertySymbol) => propertySymbol.NullableAnnotation == NullableAnnotation.Annotated;
 
         public static int GetFieldGeneration(this IFieldSymbol fieldSymbol)

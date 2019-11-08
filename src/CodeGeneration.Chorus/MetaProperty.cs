@@ -67,9 +67,7 @@ namespace CodeGeneration.Chorus
 
         public bool IsReadonly => Symbol == null || Symbol.IsPropertyReadonly();
 
-        public bool isRequired => IsReadonly && IsAbstract && HasSetMethod;
-
-        public bool IsRequired => Symbol.IsPropertyRequired();
+        public bool IsNonNullable => Symbol.IsPropertyNonNulable();
 
         public string JsonTypeName => IsJsonSerializeable ? "Object" : GetSafeTypeClassName(GetSafePropertyType(Symbol.Type));
 

@@ -13,6 +13,7 @@
         private static readonly IdentifierNameSyntax _jsonBufferWriterParameterName = IdentifierName("buffer");
         private static readonly IdentifierNameSyntax _jsonWriterParameterName = IdentifierName("writer");
         private static readonly IdentifierNameSyntax _propertyNameParameterName = IdentifierName("propertyName");
+
         private static readonly IdentifierNameSyntax _jsonElementParameterName = IdentifierName("element");
         private static readonly IdentifierNameSyntax _valueParameterName = IdentifierName("value");
         private static readonly TypeSyntax _voidTypeSyntax = PredefinedType(Token(SyntaxKind.VoidKeyword));

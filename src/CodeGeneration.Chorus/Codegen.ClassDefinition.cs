@@ -9,13 +9,14 @@ namespace CodeGeneration.Chorus
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using System;
     using System.Collections.Generic;
+    using System.Collections.Immutable;
     using System.Linq;
     using System.Threading.Tasks;
     using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
     internal partial class CodeGen
     {
-        private static BaseExpressionSyntax _baseExpression = BaseExpression(SyntaxFactory.Token(SyntaxKind.BaseKeyword));
+        private static readonly BaseExpressionSyntax _baseExpression = BaseExpression(Token(SyntaxKind.BaseKeyword));
 
         public static FieldDeclarationSyntax CreateConstMember(TypedConstant constant, string name)
         {
@@ -57,16 +58,31 @@ namespace CodeGeneration.Chorus
             var abstractImplementations = await sourceMetaType.GetPropertyOverridesAsync();
             var isAbstract = sourceMetaType.IsAbstractType;
             var localProperties = await sourceMetaType.GetLocalPropertiesAsync();
+            var directAncestor = await sourceMetaType.GetDirectAncestorAsync();
 
-            innerMembers.AddRange(await sourceMetaType.CreateJsonCtorAsync(hasAncestor));
-            if (sourceMetaType.IsAssignableFrom(_responseMessageType))
+            innerMembers.AddRange(await sourceMetaType.JsonCtorAsync(hasAncestor));
+
+            if (SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, sourceMetaType.TypeSymbol))
             {
-                innerMembers.AddRange(await CreateResponseCtorAsync(sourceMetaType));
+                innerMembers.AddRange(ResponseMessageSyntax.AbstractResponseCtor(sourceMetaType));
+            }
+            else if (SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, directAncestor.TypeSymbol))
+            {
+                innerMembers.AddRange(await ResponseCtorAsync(sourceMetaType));
+            }
+            else if (SymbolEqualityComparer.Default.Equals(_messageTypeSymbol, sourceMetaType.TypeSymbol))
+            {
+                innerMembers.Add(MessageSyntax.AbstractMessageCtor(sourceMetaType));
+            }
+            else if (sourceMetaType.IsAssignableFrom(_messageTypeSymbol))
+            {
+                innerMembers.Add(await MessageCtorAsync(sourceMetaType, directAncestor));
             }
             else
             {
-                innerMembers.AddRange(await CreatePublicCtorAsync(sourceMetaType, hasAncestor));
+                innerMembers.AddRange(await PublicCtorAsync(sourceMetaType, hasAncestor));
             }
+
             innerMembers.AddRange(abstractImplementations);
             innerMembers.AddRange(localProperties.Select(CreatePropertyDeclaration));
             if (localProperties.Count > 0)
@@ -102,8 +118,10 @@ namespace CodeGeneration.Chorus
             return members;
         }
 
-        private static async Task<IEnumerable<MemberDeclarationSyntax>> CreateJsonCtorAsync(this MetaType sourceMetaType, bool hasAncestor)
+        private static async Task<IEnumerable<MemberDeclarationSyntax>> JsonCtorAsync(this MetaType sourceMetaType, bool hasAncestor)
         {
+            bool IsRequired(MetaProperty prop) => prop.IsIgnored || sourceMetaType.AbstractJsonProperty == prop.Name ? false : true;
+
             var paramName = IdentifierName("json");
             var param = Parameter(paramName.Identifier).WithType(ParseName(nameof(System.Text.Json.JsonElement)));
 
@@ -122,15 +140,9 @@ namespace CodeGeneration.Chorus
                 body.Add(expression);
             }
 
-            bool IsRequired(MetaProperty prop)
-            {
-                return prop.IsIgnored || sourceMetaType.AbstractJsonProperty == prop.Name ? false : true;
-            }
-
             body.AddRange(
                 (await sourceMetaType.GetLocalPropertiesAsync()).Where(IsRequired).Select(f =>
-                ExpressionStatement(
-                    AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, IdentifierName(f.NameAsProperty.Identifier), f.GetJsonValue(paramName))))
+                    ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, IdentifierName(f.NameAsProperty.Identifier), f.GetJsonValue(paramName))))
                 );
 
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
@@ -149,12 +161,59 @@ namespace CodeGeneration.Chorus
             return new[] { ctor };
         }
 
-        private static async Task<IEnumerable<MemberDeclarationSyntax>> CreatePublicCtorAsync(MetaType sourceMetaType, bool hasAncestor)
+        private static async Task<MemberDeclarationSyntax> MessageCtorAsync(MetaType sourceMetaType, MetaType directAncestor)
         {
-            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(p => p.isRequired);
+            static bool isRequired(MetaProperty p) => !(
+                p.IsReadonly ||
+                p.IsAbstract ||
+                p.HasSetMethod ||
+                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _messageTypeSymbol));
+
+            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired);
             var body = Block(localProperties.Select(p => p.PropertyAssignment));
 
-            var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(p => p.isRequired);
+            var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired);
+            var orderedArguments = allProperties.Where(p => !p.IsNullable).OrderBy(p => p.Name)
+                    .Concat(allProperties.Where(p => p.IsNullable).OrderBy(p => p.Name));
+
+            var arguments = (await sourceMetaType.GetInheritedPropertiesAsync())
+               .Where(isRequired);
+
+            var baseAssignment =
+                SymbolEqualityComparer.Default.Equals(_messageTypeSymbol, directAncestor.TypeSymbol) ?
+                    MessageSyntax.DirectDescendentConstructorInitializer :
+                    MessageSyntax.ConstructorInitializer(arguments);
+
+            var parameters = MessageSyntax.DefaultParameters.Concat(CreateParameterList(orderedArguments));
+            return ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                .AddModifiers(Token(SyntaxKind.PublicKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, parameters)))
+                .WithInitializer(baseAssignment)
+                .WithBody(body);
+        }
+
+        private static async Task<ConstructorInitializerSyntax> GetBaseAssignmentListAsync(MetaType sourceMetaType, Func<MetaProperty, bool> isRequired)
+        {
+            var props = await sourceMetaType.GetInheritedPropertiesAsync();
+            if (props.Count > 0)
+            {
+                return ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, CreateAssignmentList(props.Where(isRequired)));
+            }
+            return null;
+        }
+
+        private static async Task<IEnumerable<MemberDeclarationSyntax>> PublicCtorAsync(MetaType sourceMetaType, bool hasAncestor)
+        {
+            static bool isRequired(MetaProperty p) => !(
+                p.IsReadonly ||
+                p.IsAbstract ||
+                p.HasSetMethod ||
+                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _messageTypeSymbol));
+
+            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired);
+            var body = Block(localProperties.Select(p => p.PropertyAssignment));
+
+            var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired);
             var orderedArguments = allProperties.Where(p => !p.IsNullable).OrderBy(p => p.Name)
                     .Concat(allProperties.Where(p => p.IsNullable).OrderBy(p => p.Name));
 
@@ -165,85 +224,107 @@ namespace CodeGeneration.Chorus
 
             if (hasAncestor)
             {
-                var props = (await sourceMetaType.GetInheritedPropertiesAsync())
-                    .Where(p => p.isRequired)
-                    .OrderBy(p => p.Name)
-                    .ToList();
-
-                if (props.Count > 0)
+                var baseAssignment = await GetBaseAssignmentListAsync(sourceMetaType, isRequired);
+                if (baseAssignment != null)
                 {
-                    var arguments = CreateAssignmentList(props);
-                    ctor = ctor.WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
+                    ctor = ctor.WithInitializer(baseAssignment);
                 }
             }
             return new[] { ctor };
         }
 
-        private static async Task<IEnumerable<MemberDeclarationSyntax>> CreateResponseCtorAsync(MetaType sourceMetaType)
+        static class ResponseMessageSyntax
         {
-            var hasAncestor = !SymbolEqualityComparer.Default.Equals(_responseMessageType, sourceMetaType.TypeSymbol);
-            var requestParam = IdentifierName("resquest");
-            var requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Common.Messaging.IRequestMessage"));
+            private static readonly IdentifierNameSyntax requestParam = IdentifierName("resquest");
+            private static readonly ParameterSyntax requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Common.Messaging.IRequestMessage"));
 
-            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(p => p.isRequired);
+            private static readonly IdentifierNameSyntax requestIdParam = IdentifierName("requestId");
+            private static readonly ParameterSyntax requestIdParamType = Parameter(requestIdParam.Identifier).WithType(ParseName(typeof(int).FullName));
+
+            private static readonly IdentifierNameSyntax hasMoreParam = IdentifierName("hasMore");
+            private static readonly ParameterSyntax hasMoreParamType = Parameter(hasMoreParam.Identifier).WithType(NullableType(ParseName(typeof(bool).FullName)))
+                    .WithDefault(EqualsValueClause((ExpressionSyntax)Syntax.Generator.NullLiteralExpression()));
+
+            private static readonly IdentifierNameSyntax exceptionParam = IdentifierName("error");
+            private static readonly ParameterSyntax exceptionParamType = Parameter(exceptionParam.Identifier).WithType(ParseName(typeof(Exception).FullName));
+
+            public static IEnumerable<ParameterSyntax> RequiredParameters = new[] { requestParamType };
+            public static IEnumerable<ParameterSyntax> OptionalParameters = new[] { hasMoreParamType };
+            public static IEnumerable<IdentifierNameSyntax> AssignmentArguments = new[] { requestParam, hasMoreParam };
+
+            public static readonly MemberAccessExpressionSyntax DotActorId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, requestParam, MessageSyntax.ActorId);
+            private static readonly ArgumentListSyntax messageCtorAssignment = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, Argument(NameColon(MessageSyntax.CorrelationParameterName), NoneToken, requestParam), Argument(NameColon(MessageSyntax.ActorIdParameterName), NoneToken, DotActorId)));
+
+
+            public static MemberDeclarationSyntax DefauiltErrorCtor(MetaType sourceMetaType)
+            {
+                return ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                    .AddModifiers(Token(SyntaxKind.PublicKeyword))
+                    .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { requestParamType, exceptionParamType })))
+                    .WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, CreateAssignmentList(new[] { requestParam, exceptionParam })))
+                    .WithBody(Block());
+            }
+
+            public static IEnumerable<MemberDeclarationSyntax> AbstractResponseCtor(MetaType sourceMetaType)
+            {
+
+                yield return ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                   .AddModifiers(Token(SyntaxKind.PublicKeyword))
+                   .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { requestParamType, hasMoreParamType })))
+                   .WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, messageCtorAssignment))
+                   .WithBody(Block());
+
+                yield return ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                    .AddModifiers(Token(SyntaxKind.PublicKeyword))
+                    .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { requestParamType, exceptionParamType })))
+                    .WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, messageCtorAssignment))
+                    .WithBody(Block());
+            }
+
+        }
+
+        private static async Task<IEnumerable<MemberDeclarationSyntax>> ResponseCtorAsync(MetaType sourceMetaType)
+        {
+            static IEnumerable<ParameterSyntax> CreateParameterList(IEnumerable<MetaProperty> properties)
+            {
+                return properties.Select(f => Parameter(f.NameAsArgument.Identifier).WithType(f.Type.GetFullyQualifiedSymbolName(NullableAnnotation.NotAnnotated)));
+            }
+
+            static bool isRequired(MetaProperty p) => !(
+                p.IsReadonly ||
+                p.IsAbstract ||
+                p.HasSetMethod ||
+                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _responseMessageTypeSymbol) ||
+                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _messageTypeSymbol));
+
+
+            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired);
             var body = Block(localProperties.Select(p => p.PropertyAssignment));
 
-            static bool isRequired(MetaProperty p)
-                => p.isRequired && !SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _responseMessageType);
-
             var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired);
-            var orderedArguments = allProperties.Where(p => !p.IsNullable).OrderBy(p => p.Name)
-                    .Concat(allProperties.Where(p => p.IsNullable).OrderBy(p => p.Name));
+
+            var parameters = ResponseMessageSyntax.RequiredParameters
+                    .Concat(CreateParameterList(allProperties.Where(p => !p.HasSetMethod).OrderBy(p => p.Name)))
+                    .Concat(ResponseMessageSyntax.OptionalParameters);
 
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { requestParamType }.Concat(CreateParameterList(orderedArguments)))))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, parameters)))
                .WithBody(body);
 
-            if (hasAncestor)
-            {
-                var props = (await sourceMetaType.GetInheritedPropertiesAsync())
-                    .Where(p => p.isRequired)
-                    .OrderBy(p => p.Name)
-                    .ToList();
+            var props = (await sourceMetaType.GetInheritedPropertiesAsync())
+                .Where(isRequired)
+                .OrderBy(p => p.Name)
+                .Select(p => p.NameAsArgument);
 
-                if (props.Count > 0)
-                {
-                    var arguments = CreateAssignmentList(props);
-                    ctor = ctor.WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
-                }
-            }
+            props = ResponseMessageSyntax.AssignmentArguments.Concat(props);
 
-            return new[] { ctor, await CreateResponseErrorCtorAsync(sourceMetaType, hasAncestor) };
+            var arguments = CreateAssignmentList(props);
+            ctor = ctor.WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
+
+            return new[] { ctor, ResponseMessageSyntax.DefauiltErrorCtor(sourceMetaType) };
         }
 
-        private static async Task<MemberDeclarationSyntax> CreateResponseErrorCtorAsync(MetaType sourceMetaType, bool hasAncestor)
-        {
-            var requestParam = IdentifierName("resquest");
-            var requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Common.Messaging.IRequestMessage"));
-
-            var exceptionParam = IdentifierName("error");
-            var exceptionParamType = Parameter(exceptionParam.Identifier).WithType(ParseName(nameof(Exception)));
-
-            var body = new List<StatementSyntax>();
-
-            var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
-                .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { requestParamType, exceptionParamType })))
-               .WithBody(Block(body));
-
-            if (hasAncestor)
-            {
-                var arguments = CreateAssignmentList(new[] { requestParam, exceptionParam });
-                ctor = ctor.WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
-            }
-            else
-            {
-                await Task.Delay(1);
-            }
-
-            return ctor;
-        }
 
         private static async Task<MethodDeclarationSyntax> ToJsonMethodAsync(this MetaType sourceMetaType)
         {
@@ -293,6 +374,89 @@ namespace CodeGeneration.Chorus
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), virtualOrOverride)
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterParameter })))
                 .WithBody(Block(body));
+        }
+
+        internal static class MessageSyntax
+        {
+            public static readonly IdentifierNameSyntax ActorId = IdentifierName("ActorId");
+
+            public static readonly IdentifierNameSyntax ActorIdParameterName = IdentifierName("actorId");
+
+            private static readonly IdentifierNameSyntax CorrelationId = IdentifierName("CorrelationId");
+
+            public static readonly IdentifierNameSyntax CorrelationParameterName = IdentifierName("correlation");
+
+            private static readonly IdentifierNameSyntax Id = IdentifierName("Id");
+
+            private static readonly IdentifierNameSyntax PostedTime = IdentifierName("PostedTime");
+
+            private static readonly IdentifierNameSyntax TargetParameterName = IdentifierName("target");
+
+            private static readonly IdentifierNameSyntax UserId = IdentifierName("UserId");
+
+            private static readonly IdentifierNameSyntax _guidType = IdentifierName(typeof(Guid).FullName);
+
+            private static readonly ParameterSyntax ActorIdParameterType = Parameter(ActorIdParameterName.Identifier).WithType(_guidType);
+
+            private static readonly ParameterSyntax CorrelatingParamType = Parameter(CorrelationParameterName.Identifier).WithType(ParseName("Chorus.Common.Messaging.IMessage"));
+
+            private static readonly MemberAccessExpressionSyntax DotActorId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, TargetParameterName, Id);
+
+            private static IEnumerable<ArgumentSyntax> DirectDescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(ActorIdParameterName), NoneToken, DotActorId) };
+
+            private static readonly ArgumentListSyntax DirectDescendentArgumentList = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, DirectDescendentArguments));
+
+            private static readonly ParameterSyntax TargetParamType = Parameter(TargetParameterName.Identifier).WithType(ParseName("Chorus.Common.Actors.IVirtualActorDefinition"));
+
+            private static IEnumerable<ArgumentSyntax> DescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(TargetParameterName), NoneToken, TargetParameterName) };
+
+            private static readonly ArgumentListSyntax DescendentArgumentList = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, DescendentArguments));
+
+            public static readonly IEnumerable<ParameterSyntax> DefaultParameters = new[] { CorrelatingParamType, TargetParamType };
+
+            private static readonly MemberAccessExpressionSyntax DotId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, CorrelationParameterName, Id);
+
+            private static readonly MemberAccessExpressionSyntax DotUserId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, CorrelationParameterName, UserId);
+
+            private static readonly MemberAccessExpressionSyntax UtcNow = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName(typeof(DateTimeOffset).FullName), IdentifierName(nameof(DateTimeOffset.UtcNow)));
+
+            private static readonly InvocationExpressionSyntax ToUnixTimeMilliseconds = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, UtcNow, IdentifierName(nameof(DateTimeOffset.ToUnixTimeMilliseconds)))
+                                                                       .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                                                                       .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+            private static readonly InvocationExpressionSyntax NewGuid = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _guidType, IdentifierName(nameof(Guid.NewGuid)))
+                                                                       .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                                                                       .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+            public static ConstructorInitializerSyntax DirectDescendentConstructorInitializer = SyntaxFactory.ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, DirectDescendentArgumentList);
+
+            public static ConstructorInitializerSyntax ConstructorInitializer(IEnumerable<MetaProperty> properties)
+            {
+                var v = DateTimeOffset.UtcNow;
+                var resolver = properties.Select(p => Argument(NameColon(p.NameAsArgument), NoneToken, p.NameAsArgument));
+                var arguments = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, DescendentArguments.Concat(resolver)));
+                return SyntaxFactory.ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments);
+
+            }
+            private static readonly IEnumerable<ParameterSyntax> BaseParameters = new[] { CorrelatingParamType, ActorIdParameterType };
+
+            private static readonly IEnumerable<ExpressionStatementSyntax> ParameterAssignment = new[]
+            {
+                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, Id, NewGuid)),
+                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, PostedTime, ToUnixTimeMilliseconds)),
+                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, UserId, DotUserId)),
+                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, ActorId, ActorIdParameterName)),
+                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, CorrelationId, DotId)),
+            };
+
+            public static MemberDeclarationSyntax AbstractMessageCtor(MetaType sourceMetaType)
+            {
+                var body = Block(ParameterAssignment);
+                return ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                    .AddModifiers(Token(SyntaxKind.ProtectedKeyword))
+                    .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, BaseParameters)))
+                   .WithBody(body);
+            }
         }
     }
 }
