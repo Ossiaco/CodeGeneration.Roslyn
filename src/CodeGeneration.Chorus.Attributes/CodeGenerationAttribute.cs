@@ -11,7 +11,7 @@ namespace CodeGeneration.Chorus
     /// Defines the <see cref="CodeGenerationAttribute" />.
     /// </summary>
     [AttributeUsage(AttributeTargets.Interface, Inherited = true, AllowMultiple = false)]
-    [Conditional("CodeGeneration")]
+    // [Conditional("CodeGeneration")]
     public abstract class CodeGenerationAttribute : Attribute
     {
     }

@@ -33,7 +33,7 @@ namespace CodeGeneration.Chorus
     /// Defines the <see cref="JsonStringEnumAttribute" />.
     /// </summary>
     [AttributeUsage(AttributeTargets.Enum)]
-    [Conditional("CodeGeneration")]
+    // [Conditional("CodeGeneration")]
     public class JsonStringEnumAttribute : Attribute
     {
         /// <summary>

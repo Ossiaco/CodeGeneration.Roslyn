@@ -10,7 +10,7 @@ namespace CodeGeneration.Chorus
     /// <summary>
     /// Defines the <see cref="NotRecursiveAttribute" />.
     /// </summary>
-    [Conditional("CodeGeneration")]
+    // [Conditional("CodeGeneration")]
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public sealed class NotRecursiveAttribute : Attribute
     {

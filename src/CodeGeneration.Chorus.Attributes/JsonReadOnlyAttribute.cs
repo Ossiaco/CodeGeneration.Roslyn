@@ -11,7 +11,7 @@ namespace CodeGeneration.Chorus
     /// Defines the <see cref="JsonReadOnlyAttribute" />.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
-    [Conditional("CodeGeneration")]
+    // [Conditional("CodeGeneration")]
     public class JsonReadOnlyAttribute : Attribute
     {
         /// <summary>

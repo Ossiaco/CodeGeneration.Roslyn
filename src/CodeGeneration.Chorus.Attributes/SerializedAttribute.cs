@@ -11,7 +11,7 @@ namespace CodeGeneration.Chorus
     /// Defines the <see cref="SerializedAttribute" />.
     /// </summary>
     [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false)]
-    [Conditional("CodeGeneration")]
+    // [Conditional("CodeGeneration")]
     public class SerializedAttribute : Attribute
     {
         /// <summary>
