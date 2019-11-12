@@ -150,6 +150,20 @@ namespace CodeGeneration.Chorus
             return leafType;
         }
 
+        internal static NameSyntax GetTypeSyntax(string ns, string leafType)
+        {
+            NameSyntax namespaceName = null;
+            foreach (var segment in ns.Split('.'))
+            {
+                var segmentName = IdentifierName(segment);
+                namespaceName = namespaceName == null
+                    ? (NameSyntax)segmentName
+                    : QualifiedName(namespaceName, IdentifierName(segment));
+            }
+
+            return QualifiedName(namespaceName, IdentifierName(leafType));
+        }
+
         internal static NameSyntax IEnumerableOf(TypeSyntax typeSyntax)
         {
             return QualifiedName(

@@ -64,7 +64,7 @@ namespace CodeGeneration.Chorus
 
             if (SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, sourceMetaType.TypeSymbol))
             {
-                innerMembers.AddRange(ResponseMessageSyntax.AbstractResponseCtor(sourceMetaType));
+                innerMembers.AddRange(await ResponseMessageSyntax.AbstractResponseCtorAsync(sourceMetaType));
             }
             else if (SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, directAncestor.TypeSymbol))
             {
@@ -236,6 +236,7 @@ namespace CodeGeneration.Chorus
         static class ResponseMessageSyntax
         {
             private static readonly IdentifierNameSyntax requestParam = IdentifierName("resquest");
+            private static readonly IdentifierNameSyntax errorProperty = IdentifierName("Error");
             private static readonly ParameterSyntax requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Common.Messaging.IRequestMessage"));
 
             private static readonly IdentifierNameSyntax requestIdParam = IdentifierName("requestId");
@@ -265,20 +266,28 @@ namespace CodeGeneration.Chorus
                     .WithBody(Block());
             }
 
-            public static IEnumerable<MemberDeclarationSyntax> AbstractResponseCtor(MetaType sourceMetaType)
+            public static async Task<IEnumerable<MemberDeclarationSyntax>> AbstractResponseCtorAsync(MetaType sourceMetaType)
             {
 
-                yield return ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+                var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(p => p.Name == "HasMore");
+
+                var ctor1 = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
                    .AddModifiers(Token(SyntaxKind.PublicKeyword))
                    .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { requestParamType, hasMoreParamType })))
                    .WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, messageCtorAssignment))
-                   .WithBody(Block());
+                   .WithBody(Block(localProperties.Select(p => p.PropertyAssignment)));
 
-                yield return ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+
+                var responseError = ObjectCreationExpression(Syntax.GetTypeSyntax("Chorus.Common.Messaging", "ResponseError"))
+                    .AddArgumentListArguments(Argument(exceptionParam));
+
+                var ctor2 = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
                     .AddModifiers(Token(SyntaxKind.PublicKeyword))
                     .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { requestParamType, exceptionParamType })))
                     .WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, messageCtorAssignment))
-                    .WithBody(Block());
+                    .WithBody(Block().AddStatements(ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, errorProperty, responseError))));
+
+                return new[] { ctor1, ctor2 };
             }
 
         }
