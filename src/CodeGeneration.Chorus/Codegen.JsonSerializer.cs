@@ -44,10 +44,8 @@
             var declarations = List<MemberDeclarationSyntax>();
             declarations = declarations.Add(partialClass);
             var usingsDirectives = List(new[] {
-                UsingDirective(ParseName(typeof(System.Buffers.IBufferWriter<byte>).Namespace)),
                 UsingDirective(ParseName("Chorus.Common.Text.Json")),
                 UsingDirective(sourceMetaType.Namespace),
-                UsingDirective(ParseName(typeof(IEnumerable<string>).Namespace))
             });
 
             return NamespaceDeclaration(namespaceName)

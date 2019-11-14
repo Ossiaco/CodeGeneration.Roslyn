@@ -210,12 +210,36 @@ namespace CodeGeneration.Chorus
                 p.HasSetMethod ||
                 SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _messageTypeSymbol));
 
+            IEnumerable<ParameterSyntax> CreateParameterList(IEnumerable<MetaProperty> properties)
+            {
+                ParameterSyntax SetTypeAndDefault(ParameterSyntax parameter, MetaProperty property)
+                {
+                    if (property.IsNullable)
+                    {
+                        return parameter.WithType(property.TypeSyntax).WithDefault(EqualsValueClause((ExpressionSyntax)Syntax.Generator.NullLiteralExpression()));
+                    }
+                    if (property.IsOptional)
+                    {
+                        switch (property.Name)
+                        {
+                            case "PartitionKey":
+                                ExpressionSyntax defaultPartion = LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"{sourceMetaType.ClassName.Identifier.ValueText.Replace("Definition","")}"));
+                                return parameter.WithType(property.Type.GetFullyQualifiedSymbolName(NullableAnnotation.Annotated)).WithDefault(EqualsValueClause(defaultPartion));
+                        }
+                    }
+                    return parameter.WithType(property.TypeSyntax);
+                }
+
+                return properties.Select(f => SetTypeAndDefault(SyntaxFactory.Parameter(f.NameAsArgument.Identifier), f));
+            }
+
+
             var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired);
             var body = Block(localProperties.Select(p => p.PropertyAssignment));
 
             var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired);
-            var orderedArguments = allProperties.Where(p => !p.IsNullable).OrderBy(p => p.Name)
-                    .Concat(allProperties.Where(p => p.IsNullable).OrderBy(p => p.Name));
+            var orderedArguments = allProperties.Where(p => !p.IsOptional).OrderBy(p => p.Name)
+                    .Concat(allProperties.Where(p => p.IsOptional).OrderBy(p => p.Name));
 
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
                 .AddModifiers(Token(sourceMetaType.HasAbstractJsonProperty ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))

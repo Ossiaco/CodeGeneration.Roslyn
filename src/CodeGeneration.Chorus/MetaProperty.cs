@@ -64,6 +64,7 @@ namespace CodeGeneration.Chorus
         public bool IsJsonSerializeable { get; }
 
         public bool IsNullable => Symbol.IsPropertyNullable();
+        public bool IsOptional => Symbol.IsPropertyNullable() || Symbol.Name == "PartitionKey";
 
         public bool IsReadonly => Symbol == null || Symbol.IsPropertyReadonly();
 

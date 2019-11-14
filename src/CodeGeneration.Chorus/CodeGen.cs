@@ -41,6 +41,7 @@
         public static INamedTypeSymbol JsonSerializeableType;
         private static INamedTypeSymbol _responseMessageTypeSymbol;
         private static INamedTypeSymbol _messageTypeSymbol;
+        private static INamedTypeSymbol _vertexTypeSymbol;
 
 
         private async static Task<ImmutableDictionary<INamedTypeSymbol, MetaType>> GetAllTypeDefinitionsAsync(CSharpCompilation compilation)
@@ -48,6 +49,7 @@
             JsonSerializeableType = compilation.GetTypeByMetadataName(typeof(IJsonSerialize).FullName);
             _responseMessageTypeSymbol = compilation.GetTypeByMetadataName("Chorus.Common.Messaging.IResponseMessage");
             _messageTypeSymbol = compilation.GetTypeByMetadataName("Chorus.Common.Messaging.IMessage");
+            _vertexTypeSymbol = compilation.GetTypeByMetadataName("Chorus.Azure.Cosmos.IVertex");
             var result = new ConcurrentDictionary<INamedTypeSymbol, MetaType>(SymbolEqualityComparer.Default);
 
             async Task TryAdd(INamedTypeSymbol typeSymbol)
