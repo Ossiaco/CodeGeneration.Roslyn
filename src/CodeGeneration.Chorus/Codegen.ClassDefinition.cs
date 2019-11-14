@@ -224,7 +224,7 @@ namespace CodeGeneration.Chorus
                         {
                             case "PartitionKey":
                                 ExpressionSyntax defaultPartion = LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"{sourceMetaType.ClassName.Identifier.ValueText.Replace("Definition","")}"));
-                                return parameter.WithType(property.Type.GetFullyQualifiedSymbolName(NullableAnnotation.Annotated)).WithDefault(EqualsValueClause(defaultPartion));
+                                return parameter.WithType(property.TypeSyntax).WithDefault(EqualsValueClause(defaultPartion));
                         }
                     }
                     return parameter.WithType(property.TypeSyntax);
