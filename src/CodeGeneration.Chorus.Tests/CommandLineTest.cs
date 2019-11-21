@@ -24,17 +24,30 @@
         }
 
         [Fact]
-        private async Task TestChorusBuildAsync()
+        public async Task TestChorusBuildAsync()
         {
-            const string responsFile = @"\ossiaco\dotnet\artifacts\obj\Chorus\Debug\netstandard2.0\Chorus.csproj.dotnet-codegen.rsp";
-            const string workingDirectory = @"\ossiaco\dotnet\src\Chorus\src";
+            const string responsFile = @"\ossiaco\dotnet\artifacts\obj\Chorus\Debug\netcoreapp3.0\Chorus.csproj.dotnet-codegen.rsp";
+            const string workingDirectory = @"\git\ossiaco\Chorus.Azure.Cosmos\src";
             var targetFile = new FileInfo(@"\ossiaco\dotnet\src\Chorus\src\Azure\Cosmos\IResource.cs");
+            await ExecuteAsync(responsFile, workingDirectory, targetFile);
+        }
+
+        [Fact]
+        public async Task TestCosmosBuildAsync()
+        {
+            const string responsFile = @"\git\ossiaco\Chorus.Azure.Cosmos\src\obj\Debug\netstandard2.0\Chorus.Azure.Cosmos.csproj.dotnet-codegen.rsp";
+            const string workingDirectory = @"\git\ossiaco\Chorus.Azure.Cosmos\src";
+            var targetFile = new FileInfo(@"\git\ossiaco\Chorus.Azure.Cosmos\src\Azure\Documents\IResource.cs");
+            await ExecuteAsync(responsFile, workingDirectory, targetFile);
+        }
+
+        private async Task ExecuteAsync(string responsFile, string workingDirectory, FileInfo targetFile)
+        {
             var targetFileName = targetFile.FullName;
             DocumentId? targetDocumentId = null;
 
             Assert.True(File.Exists(responsFile), "The needed response file does not exist");
             Assert.True(Directory.Exists(workingDirectory), "The chorus working directory does not exist");
-
             using var f = File.OpenText(responsFile);
             var args = (await f.ReadToEndAsync()).Split(Environment.NewLine);
 

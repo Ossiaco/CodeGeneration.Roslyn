@@ -38,7 +38,8 @@
             innerMembers.AddRange(await StaticGetValueMethodsAsync(sourceMetaType));
 
             var partialClass = ClassDeclaration(className)
-                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                .WithModifiers(sourceMetaType.DeclarationSyntax.Modifiers)
+                .AddModifiers(Token(SyntaxKind.StaticKeyword))
                 .WithMembers(List(innerMembers));
 
             var declarations = List<MemberDeclarationSyntax>();

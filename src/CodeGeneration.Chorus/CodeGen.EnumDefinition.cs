@@ -36,7 +36,8 @@ namespace CodeGeneration.Chorus
             }
 
             var partialClass = ClassDeclaration(Identifier(className))
-                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                .WithModifiers(sourceMetaType.DeclarationSyntax.Modifiers)
+                .AddModifiers(Token(SyntaxKind.StaticKeyword))
                 .WithMembers(List(innerMembers));
 
             var declarations = List<MemberDeclarationSyntax>();

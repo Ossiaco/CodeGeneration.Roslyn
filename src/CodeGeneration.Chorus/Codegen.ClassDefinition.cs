@@ -62,19 +62,19 @@ namespace CodeGeneration.Chorus
 
             innerMembers.AddRange(await sourceMetaType.JsonCtorAsync(hasAncestor));
 
-            if (SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, sourceMetaType.TypeSymbol))
+            if (_responseMessageTypeSymbol != null && SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, sourceMetaType.TypeSymbol))
             {
                 innerMembers.AddRange(await ResponseMessageSyntax.AbstractResponseCtorAsync(sourceMetaType));
             }
-            else if (SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, directAncestor.TypeSymbol))
+            else if (_responseMessageTypeSymbol != null && SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, directAncestor.TypeSymbol))
             {
                 innerMembers.AddRange(await ResponseCtorAsync(sourceMetaType));
             }
-            else if (SymbolEqualityComparer.Default.Equals(_messageTypeSymbol, sourceMetaType.TypeSymbol))
+            else if (_messageTypeSymbol != null && SymbolEqualityComparer.Default.Equals(_messageTypeSymbol, sourceMetaType.TypeSymbol))
             {
                 innerMembers.Add(MessageSyntax.AbstractMessageCtor(sourceMetaType));
             }
-            else if (sourceMetaType.IsAssignableFrom(_messageTypeSymbol))
+            else if (_messageTypeSymbol != null && sourceMetaType.IsAssignableFrom(_messageTypeSymbol))
             {
                 innerMembers.Add(await MessageCtorAsync(sourceMetaType, directAncestor));
             }
@@ -92,7 +92,7 @@ namespace CodeGeneration.Chorus
 
             var partialClass = ClassDeclaration(sourceMetaType.ClassNameIdentifier)
                  .AddBaseListTypes(sourceMetaType.SemanticModel.AsFullyQualifiedBaseType((TypeDeclarationSyntax)sourceMetaType.DeclarationSyntax).ToArray())
-                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
+                 .WithModifiers(sourceMetaType.DeclarationSyntax.Modifiers)
                  .WithMembers(List(innerMembers));
 
             if (isAbstract)
@@ -223,7 +223,7 @@ namespace CodeGeneration.Chorus
                         switch (property.Name)
                         {
                             case "PartitionKey":
-                                ExpressionSyntax defaultPartion = LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"{sourceMetaType.ClassName.Identifier.ValueText.Replace("Definition","")}"));
+                                ExpressionSyntax defaultPartion = LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"{sourceMetaType.ClassName.Identifier.ValueText.Replace("Definition", "")}"));
                                 return parameter.WithType(property.TypeSyntax).WithDefault(EqualsValueClause(defaultPartion));
                         }
                     }
