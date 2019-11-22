@@ -115,16 +115,10 @@ namespace CodeGeneration.Chorus
                 .WithExpressionBody(ArrowExpressionClause(GetEnum($"Try{methodToCall}", classNameSyntax)))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
-            var getEnumArry = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonElementParameterName, IdentifierName($"{methodToCall}Array"))
-               .WithOperatorToken(Token(SyntaxKind.DotToken)))
-               .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(methodNameParameter) }))
-                   .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
-                   .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
-
             yield return MethodDeclaration(interfaceArrayType, getArrayMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter })))
-                .WithExpressionBody(ArrowExpressionClause(getEnumArry))
+                .WithExpressionBody(ArrowExpressionClause(GetEnumValue($"{methodToCall}Array", classNameSyntax)))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
             yield return MethodDeclaration(interfaceArrayType, getArrayMethodName)
