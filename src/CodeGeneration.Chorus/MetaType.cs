@@ -35,9 +35,9 @@ namespace CodeGeneration.Chorus
 
         private ImmutableHashSet<MetaProperty> _inheritedProperties;
 
-        private ImmutableHashSet<MetaProperty> _localProperties;
-
         private bool? _isPartialClass;
+
+        private ImmutableHashSet<MetaProperty> _localProperties;
 
         public MetaType(INamedTypeSymbol typeSymbol, BaseTypeDeclarationSyntax declarationSyntax, SemanticModel semanticModel)
         {
@@ -83,7 +83,6 @@ namespace CodeGeneration.Chorus
         public INamedTypeSymbol AbstractAttribute { get; }
 
         public string AbstractJsonProperty { get; }
-        public bool IsPartialClass => (_isPartialClass ?? (_isPartialClass = TypeSymbol.IsReferenceType && (DeclarationSyntax?.Modifiers.Any(SyntaxKind.PartialKeyword) ?? false))).Value;
 
         public IdentifierNameSyntax ClassName => (DeclarationSyntax as InterfaceDeclarationSyntax)?.ClassName() ?? SyntaxFactory.IdentifierName(DeclarationSyntax.Identifier);
 
@@ -112,6 +111,8 @@ namespace CodeGeneration.Chorus
         }
 
         public bool IsEnumAsString { get; }
+
+        public bool IsPartialClass => (_isPartialClass ?? (_isPartialClass = TypeSymbol.IsReferenceType && (DeclarationSyntax?.Modifiers.Any(SyntaxKind.PartialKeyword) ?? false))).Value;
 
         public JsonStringEnumFormat JsonStringEnumFormat { get; }
 
