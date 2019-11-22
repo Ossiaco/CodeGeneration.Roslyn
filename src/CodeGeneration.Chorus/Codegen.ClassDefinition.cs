@@ -40,7 +40,7 @@ namespace CodeGeneration.Chorus
             return null;
         }
 
-        private static async Task<MemberDeclarationSyntax> CreateClassDeclarationAsync(MetaType sourceMetaType)
+        private static async Task<MemberDeclarationSyntax> CreateClassDeclarationAsync(MetaType sourceMetaType, MetaType partialImplementation)
         {
             var innerMembers = new List<MemberDeclarationSyntax>();
             var hasAncestor = await sourceMetaType.HasAncestorAsync();
@@ -57,10 +57,11 @@ namespace CodeGeneration.Chorus
 
             var abstractImplementations = await sourceMetaType.GetPropertyOverridesAsync();
             var isAbstract = sourceMetaType.IsAbstractType;
+            var isSealed = partialImplementation?.TypeSymbol.IsSealed ?? false;
             var localProperties = await sourceMetaType.GetLocalPropertiesAsync();
             var directAncestor = await sourceMetaType.GetDirectAncestorAsync();
 
-            innerMembers.AddRange(await sourceMetaType.JsonCtorAsync(hasAncestor));
+            innerMembers.AddRange(await sourceMetaType.JsonCtorAsync(hasAncestor, isSealed));
 
             if (_responseMessageTypeSymbol != null && SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, sourceMetaType.TypeSymbol))
             {
@@ -87,7 +88,7 @@ namespace CodeGeneration.Chorus
             innerMembers.AddRange(localProperties.Select(CreatePropertyDeclaration));
             if (localProperties.Count > 0)
             {
-                innerMembers.Add(await ToJsonMethodAsync(sourceMetaType));
+                innerMembers.Add(await ToJsonMethodAsync(sourceMetaType, isSealed));
             }
 
             var partialClass = ClassDeclaration(sourceMetaType.ClassNameIdentifier)
@@ -99,7 +100,10 @@ namespace CodeGeneration.Chorus
             {
                 partialClass = partialClass.AddModifiers(Token(SyntaxKind.AbstractKeyword));
             }
-
+            if (isSealed)
+            {
+                partialClass = partialClass.AddModifiers(Token(SyntaxKind.SealedKeyword));
+            }
             partialClass = partialClass.AddModifiers(Token(SyntaxKind.PartialKeyword));
 
             var outerMembers = List<MemberDeclarationSyntax>();
@@ -118,7 +122,7 @@ namespace CodeGeneration.Chorus
             return members;
         }
 
-        private static async Task<IEnumerable<MemberDeclarationSyntax>> JsonCtorAsync(this MetaType sourceMetaType, bool hasAncestor)
+        private static async Task<IEnumerable<MemberDeclarationSyntax>> JsonCtorAsync(this MetaType sourceMetaType, bool hasAncestor, bool isSealed)
         {
             bool IsRequired(MetaProperty prop) => prop.IsIgnored || sourceMetaType.AbstractJsonProperty == prop.Name ? false : true;
 
@@ -146,7 +150,12 @@ namespace CodeGeneration.Chorus
                 );
 
             var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
-                .AddModifiers(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.ProtectedKeyword));
+                .AddModifiers(Token(SyntaxKind.InternalKeyword));
+
+            if (!isSealed)
+            {
+                ctor = ctor.AddModifiers(Token(SyntaxKind.ProtectedKeyword));
+            }
 
             ctor = ctor.WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { param })))
                .WithBody(Block(body));
@@ -207,7 +216,7 @@ namespace CodeGeneration.Chorus
             static bool isRequired(MetaProperty p) => !(
                 p.IsReadonly ||
                 p.IsAbstract ||
-                p.HasSetMethod ||
+                (p.IsNullable && p.HasSetMethod) ||
                 SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _messageTypeSymbol));
 
             IEnumerable<ParameterSyntax> CreateParameterList(IEnumerable<MetaProperty> properties)
@@ -359,7 +368,7 @@ namespace CodeGeneration.Chorus
         }
 
 
-        private static async Task<MethodDeclarationSyntax> ToJsonMethodAsync(this MetaType sourceMetaType)
+        private static async Task<MethodDeclarationSyntax> ToJsonMethodAsync(this MetaType sourceMetaType, bool isSealed)
         {
 
             static InvocationExpressionSyntax WriteJsonValue(MetaProperty metaProperty)
@@ -402,10 +411,18 @@ namespace CodeGeneration.Chorus
 
             body.AddRange(properties.Where(IsRequired).Select(f => ExpressionStatement(WriteJsonValue(f))));
 
-            var virtualOrOverride = hasAncestor ? Token(SyntaxKind.OverrideKeyword) : Token(SyntaxKind.VirtualKeyword);
-            return MethodDeclaration(_voidTypeSyntax, Identifier("ToJson"))
-                .AddModifiers(Token(SyntaxKind.PublicKeyword), virtualOrOverride)
-                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterParameter })))
+            var result = MethodDeclaration(_voidTypeSyntax, Identifier("ToJson"))
+                .AddModifiers(Token(SyntaxKind.PublicKeyword));
+
+            if (hasAncestor)
+            {
+                result = result.AddModifiers(Token(SyntaxKind.OverrideKeyword));
+            }
+            else if (!isSealed)
+            {
+                result = result.AddModifiers(Token(SyntaxKind.VirtualKeyword));
+            }
+            return result.WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterParameter })))
                 .WithBody(Block(body));
         }
 

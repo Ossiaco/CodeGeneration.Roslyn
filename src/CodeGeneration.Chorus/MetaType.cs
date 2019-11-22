@@ -37,6 +37,8 @@ namespace CodeGeneration.Chorus
 
         private ImmutableHashSet<MetaProperty> _localProperties;
 
+        private bool? _isPartialClass;
+
         public MetaType(INamedTypeSymbol typeSymbol, BaseTypeDeclarationSyntax declarationSyntax, SemanticModel semanticModel)
         {
             _localProperties = null;
@@ -81,6 +83,7 @@ namespace CodeGeneration.Chorus
         public INamedTypeSymbol AbstractAttribute { get; }
 
         public string AbstractJsonProperty { get; }
+        public bool IsPartialClass => (_isPartialClass ?? (_isPartialClass = TypeSymbol.IsReferenceType && (DeclarationSyntax?.Modifiers.Any(SyntaxKind.PartialKeyword) ?? false))).Value;
 
         public IdentifierNameSyntax ClassName => (DeclarationSyntax as InterfaceDeclarationSyntax)?.ClassName() ?? SyntaxFactory.IdentifierName(DeclarationSyntax.Identifier);
 

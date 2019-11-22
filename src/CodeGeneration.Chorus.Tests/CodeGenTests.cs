@@ -9,25 +9,25 @@
     using System.Text.Json;
     using System.Threading.Tasks;
     using CodeGeneration.Roslyn.Engine;
+    using Divergic.Logging.Xunit;
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.Text;
     using Microsoft.Extensions.Logging;
-    using Microsoft.Extensions.Logging.Testing;
     using Xunit;
     using Xunit.Abstractions;
 
 
-    public class CodeGenTests : LoggedTest
+    public class CodeGenTests
     {
         protected Solution solution;
         protected ProjectId projectId;
         protected DocumentId inputDocumentId;
+        private readonly ILoggerFactory loggerFactory;
 
-        public CodeGenTests(ITestOutputHelper logger)
-            : base(logger)
+        public CodeGenTests(ITestOutputHelper outputHelper)
         {
-            // Requires.NotNull(logger, nameof(logger));
+            this.loggerFactory = LogFactory.Create(outputHelper);
 
 
             var workspace = new AdhocWorkspace();
@@ -49,34 +49,39 @@
         [Fact]
         public async Task SimpleCompileTestAsync()
         {
+            var logger = this.loggerFactory.CreateLogger<CodeGenTests>();
             using var tw = File.CreateText($"SimpleCompileTest.cs");
-            await GenerateAsync(SourceText.From("public class Foo{}"), Logger, tw);
+            await GenerateAsync(SourceText.From("public class Foo{}"), logger, tw);
         }
 
         [Fact]
         public async Task SimpleTypeTestAsync()
         {
+            var logger = this.loggerFactory.CreateLogger<CodeGenTests>();
             using var tw = File.CreateText($"SimpleTypeTest.cs");
-            await GenerateFromStreamAsync("IResource", Logger, tw);
+            await GenerateFromStreamAsync("IResource", logger, tw);
         }
         [Fact]
         public async Task SimpleResourceTestAsync()
         {
+            var logger = this.loggerFactory.CreateLogger<CodeGenTests>();
             using var tw = File.CreateText($"SimpleResourceTest.cs");
-            await GenerateFromStreamAsync("IResource2", Logger, tw);
+            await GenerateFromStreamAsync("IResource2", logger, tw);
         }
 
         [Fact]
         public async Task DerivedResourceTestAsync()
         {
+            var logger = this.loggerFactory.CreateLogger<CodeGenTests>();
             using var tw = File.CreateText($"DerivedResourceTest.cs");
-            await GenerateFromStreamAsync("IResource3", Logger, tw);
+            await GenerateFromStreamAsync("IResource3", logger, tw);
         }
 
 
         [Fact]
         public async Task IntrinsicTypesTestAsync()
         {
+            var logger = this.loggerFactory.CreateLogger<CodeGenTests>();
             var intrinsicTypes = new[] {
                 "IBooleanType",
                 "IByteType",
@@ -98,8 +103,8 @@
             foreach (var resource in intrinsicTypes)
             {
                 using var tw = File.CreateText($"{resource}.cs");
-                Logger.LogInformation($"Generating {resource}");
-                await GenerateFromStreamAsync(resource, Logger, tw);
+                logger.LogInformation($"Generating {resource}");
+                await GenerateFromStreamAsync(resource, logger, tw);
             }
         }
 

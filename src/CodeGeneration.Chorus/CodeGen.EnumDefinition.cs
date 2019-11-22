@@ -1,12 +1,8 @@
-﻿using CodeGeneration.Roslyn;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace CodeGeneration.Chorus
@@ -87,30 +83,61 @@ namespace CodeGeneration.Chorus
                    .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
         }
 
-        private static IEnumerable<MethodDeclarationSyntax> JsonGetEnumMethods(this MetaType sourceMetaType, string methodToCall, IdentifierNameSyntax identifierSyntax)
+        private static IEnumerable<MethodDeclarationSyntax> JsonGetEnumMethods(this MetaType sourceMetaType, string methodToCall, IdentifierNameSyntax enumTypeSyntax)
         {
-            var getMethodName = Identifier($"Get{sourceMetaType.ClassNameIdentifier.Text}");
-            var tryGetMethodName = Identifier($"TryGet{sourceMetaType.ClassNameIdentifier.Text}");
+            var typeName = sourceMetaType.ClassNameIdentifier.Text;
+            var getMethodName = Identifier($"Get{typeName}");
+            var getArrayMethodName = Identifier($"Get{typeName}Array");
+            var tryGetMethodName = Identifier($"TryGet{typeName}");
+            var tryGetArrayMethodName = Identifier($"TryGet{typeName}Array");
             var classNameSyntax = sourceMetaType.ClassName;
+            var methodNameParameter = IdentifierName($"Get{typeName}");
 
-            yield return MethodDeclaration(identifierSyntax, getMethodName)
+            var interfaceArrayType = ArrayType(enumTypeSyntax)
+                .AddRankSpecifiers(ArrayRankSpecifier()
+                .AddSizes(OmittedArraySizeExpression()));
+
+            yield return MethodDeclaration(enumTypeSyntax, getMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter })))
                 .WithExpressionBody(ArrowExpressionClause(GetEnumValue(methodToCall, classNameSyntax)))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
-            yield return MethodDeclaration(identifierSyntax, getMethodName)
+            yield return MethodDeclaration(enumTypeSyntax, getMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter, _propertyNameParameter })))
                 .WithExpressionBody(ArrowExpressionClause(GetEnum(methodToCall, classNameSyntax)))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
-            yield return MethodDeclaration(SyntaxFactory.NullableType(identifierSyntax), tryGetMethodName)
+            yield return MethodDeclaration(NullableType(enumTypeSyntax), tryGetMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter, _propertyNameParameter })))
                 .WithExpressionBody(ArrowExpressionClause(GetEnum($"Try{methodToCall}", classNameSyntax)))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
+            var getEnumArry = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonElementParameterName, IdentifierName($"{methodToCall}Array"))
+               .WithOperatorToken(Token(SyntaxKind.DotToken)))
+               .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(methodNameParameter) }))
+                   .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                   .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+            yield return MethodDeclaration(interfaceArrayType, getArrayMethodName)
+                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter })))
+                .WithExpressionBody(ArrowExpressionClause(getEnumArry))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+            yield return MethodDeclaration(interfaceArrayType, getArrayMethodName)
+                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter, _propertyNameParameter })))
+                .WithExpressionBody(ArrowExpressionClause(GetEnum($"{methodToCall}Array", classNameSyntax)))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+            yield return MethodDeclaration(SyntaxFactory.NullableType(interfaceArrayType), tryGetArrayMethodName)
+                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter, _propertyNameParameter })))
+                .WithExpressionBody(ArrowExpressionClause(GetEnum($"Try{methodToCall}Array", classNameSyntax)))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
         private static IEnumerable<MethodDeclarationSyntax> JsonWriteEnumMethods(this MetaType sourceMetaType, string methodToCall, IdentifierNameSyntax identifierSyntax)
@@ -119,8 +146,7 @@ namespace CodeGeneration.Chorus
             var safeWriteMethodName = Identifier($"SafeWrite{sourceMetaType.ClassNameIdentifier.Text}");
             var classNameSyntax = sourceMetaType.ClassName;
             var valueParameter = Parameter(_valueParameterName.Identifier).WithType(identifierSyntax);
-            var nullableValueParameter = Parameter(_valueParameterName.Identifier).WithType(SyntaxFactory.NullableType(identifierSyntax));
-
+            var nullableValueParameter = Parameter(_valueParameterName.Identifier).WithType(NullableType(identifierSyntax));
 
             yield return MethodDeclaration(_voidTypeSyntax, writeMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))

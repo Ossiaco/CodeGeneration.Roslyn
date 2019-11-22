@@ -7,20 +7,21 @@
     using System.Text;
     using System.Threading.Tasks;
     using CodeGeneration.Roslyn.Engine;
+    using Divergic.Logging.Xunit;
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.Text;
     using Microsoft.Extensions.Logging;
-    using Microsoft.Extensions.Logging.Testing;
     using Xunit;
     using Xunit.Abstractions;
 
-    public class CommandLineTest : LoggedTest
+    public class CommandLineTest
     {
+        private readonly ILoggerFactory loggerFactory;
 
-        public CommandLineTest(ITestOutputHelper logger)
-        : base(logger)
+        public CommandLineTest(ITestOutputHelper outputHelper)
         {
+            this.loggerFactory = LogFactory.Create(outputHelper);
         }
 
         [Fact]
@@ -43,6 +44,7 @@
 
         private async Task ExecuteAsync(string responsFile, string workingDirectory, FileInfo targetFile)
         {
+            var logger = this.loggerFactory.CreateLogger<CommandLineTest>();
             var targetFileName = targetFile.FullName;
             DocumentId? targetDocumentId = null;
 
@@ -104,7 +106,7 @@
 
             Assert.NotNull(targetDocumentId);
             using var tw = File.CreateText($"{targetFile.Name}_generated.cs");
-            await GenerateAsync(solution.GetDocument(targetDocumentId!)!, Logger, tw);
+            await GenerateAsync(solution.GetDocument(targetDocumentId!)!, logger, tw);
         }
 
         private async Task<GenerationResult> GenerateAsync(TextDocument targetDocument, ILogger logger, TextWriter textWriter)

@@ -119,6 +119,13 @@
                     new LocalizableResourceString(nameof(DiagnosticStrings.OCC002), DiagnosticStrings.ResourceManager, typeof(DiagnosticStrings)),
                     "Design", DiagnosticSeverity.Error, isEnabledByDefault: true);
 
+        private static bool IsPartialImplementationOfInterface(MetaType m, MetaType metaType)
+        {
+            return m.IsPartialClass 
+                && m.TypeSymbol.Interfaces.Any(i => i.Equals(metaType.TypeSymbol))
+                && m.TypeSymbol.ContainingNamespace.Equals(metaType.TypeSymbol.ContainingNamespace);
+        }
+
         private static async Task<ImmutableArray<MemberDeclarationSyntax>> GenerateAsync(MetaType metaType, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
         {
             try
@@ -131,8 +138,9 @@
                         switch (key.TypeKind)
                         {
                             case TypeKind.Interface:
+                                var partialImplementation = AllNamedTypeSymbols.Values.FirstOrDefault(m => IsPartialImplementationOfInterface(m, metaType));
                                 var result = await GenerateDependenciesAsync(metaType, progress, cancellationToken).ConfigureAwait(false);
-                                result = result.Add(await CreateClassDeclarationAsync(metaType).ConfigureAwait(false));
+                                result = result.Add(await CreateClassDeclarationAsync(metaType, partialImplementation).ConfigureAwait(false));
                                 var descendents = await metaType.GetDirectDescendentsAsync();
                                 var tasks = await Task.WhenAll(descendents.Select(to => GenerateAsync(to, progress, cancellationToken))).ConfigureAwait(false);
                                 foreach (var r in tasks)
