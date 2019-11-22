@@ -231,7 +231,7 @@ namespace CodeGeneration.Chorus
                     {
                         switch (property.Name)
                         {
-                            case "PartitionKey":
+                            case "PartitionKey" when string.Compare(property.ElementType.MetadataName, "string", StringComparison.InvariantCultureIgnoreCase) == 0:
                                 ExpressionSyntax defaultPartion = LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"{sourceMetaType.ClassName.Identifier.ValueText.Replace("Definition", "")}"));
                                 return parameter.WithType(property.TypeSyntax).WithDefault(EqualsValueClause(defaultPartion));
                         }
