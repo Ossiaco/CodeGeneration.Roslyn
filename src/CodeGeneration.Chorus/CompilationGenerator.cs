@@ -194,6 +194,8 @@ namespace CodeGeneration.Chorus
             vertexType = compilation.GetTypeByMetadataName("Chorus.Azure.Cosmos.IVertex");
             intrinsicSymbols = GetIntrinsicSymbols(compilation);
 
+            var generatedFiles = this.generatedFiles.ToBuilder();
+
             var generatorAssemblyInputsFile = Path.Combine(IntermediateOutputDirectory, InputAssembliesIntermediateOutputFileName);
 
             // For incremental build, we want to consider the input->output files as well as the assemblies involved in code generation.
@@ -228,6 +230,8 @@ namespace CodeGeneration.Chorus
             {
                 throw new AggregateException(fileFailures);
             }
+
+            this.generatedFiles = generatedFiles.ToImmutable();
 
         }
 
@@ -286,7 +290,7 @@ namespace CodeGeneration.Chorus
                 }
                 while (true);
             }
-            return File.Exists(outputFilePath);
+            return File.Exists(outputFilePath) && (new FileInfo(outputFilePath)).Length > 0;
         }
 
         private async Task<ImmutableDictionary<INamedTypeSymbol, MetaType>> GetAllTypeDefinitionsAsync(CSharpCompilation compilation)

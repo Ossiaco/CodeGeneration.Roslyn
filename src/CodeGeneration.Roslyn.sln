@@ -30,6 +30,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CodeGeneration.Chorus.Tests
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CodeGeneration.Chorus.Attributes", "CodeGeneration.Chorus.Attributes\CodeGeneration.Chorus.Attributes.csproj", "{84B76B3B-141C-4850-891F-6C260F063E10}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CodeGeneration.Roslyn.BuildTime", "CodeGeneration.Roslyn.BuildTime\CodeGeneration.Roslyn.BuildTime.csproj", "{E651C31F-7EC0-44B1-863A-B81271A2D324}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -52,6 +54,10 @@ Global
 		{84B76B3B-141C-4850-891F-6C260F063E10}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{84B76B3B-141C-4850-891F-6C260F063E10}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{84B76B3B-141C-4850-891F-6C260F063E10}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E651C31F-7EC0-44B1-863A-B81271A2D324}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E651C31F-7EC0-44B1-863A-B81271A2D324}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E651C31F-7EC0-44B1-863A-B81271A2D324}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E651C31F-7EC0-44B1-863A-B81271A2D324}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -60,6 +66,7 @@ Global
 		{ECBEC578-89B3-4C34-99EF-8B2D639C1EF8} = {3B16AA1C-73CF-480C-84A8-377938BB6EA3}
 		{7EA2AA66-1B7F-4E23-933D-C100908342B2} = {D753E49D-90A8-40AF-918F-21BCDB296D1D}
 		{84B76B3B-141C-4850-891F-6C260F063E10} = {3B16AA1C-73CF-480C-84A8-377938BB6EA3}
+		{E651C31F-7EC0-44B1-863A-B81271A2D324} = {3B16AA1C-73CF-480C-84A8-377938BB6EA3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4F15606A-A60D-4F68-828C-56A6D217B04C}
