@@ -129,7 +129,7 @@ namespace CodeGeneration.Roslyn.Engine
 
                     // Code generation is relatively fast, but it's not free.
                     // So skip files that haven't changed since we last generated them.
-                    // var outputLastModified = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
+                    var outputLastModified = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
                     // if (File.GetLastWriteTime(inputSyntaxTree.FilePath) > outputLastModified || assembliesLastModified > outputLastModified)
                     {
                         var retriesLeft = 3;
@@ -172,7 +172,6 @@ namespace CodeGeneration.Roslyn.Engine
                         }
                         while (true);
                     }
-
                 }
             }
 

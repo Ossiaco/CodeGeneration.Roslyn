@@ -2,14 +2,13 @@
 // Copyright (c) Ossiaco Inc. All rights reserved.
 //------------------------------------------------------------
 
-namespace CodeGeneration.Chorus
+namespace CodeGeneration.Chorus.Json
 {
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using System;
     using System.Collections.Generic;
-    using System.Collections.Immutable;
     using System.Linq;
     using System.Threading.Tasks;
     using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -40,60 +39,60 @@ namespace CodeGeneration.Chorus
             return null;
         }
 
-        private static async Task<MemberDeclarationSyntax> CreateClassDeclarationAsync(MetaType sourceMetaType, MetaType partialImplementation)
+        private async Task<MemberDeclarationSyntax> CreateClassDeclarationAsync(MetaType partialImplementation)
         {
             var innerMembers = new List<MemberDeclarationSyntax>();
-            var hasAncestor = await sourceMetaType.HasAncestorAsync();
+            var hasAncestor = await this.metaType.HasAncestorAsync();
 
             PropertyDeclarationSyntax CreatePropertyDeclaration(MetaProperty prop)
             {
                 var result = prop.PropertyDeclarationSyntax;
-                if (prop.Name == sourceMetaType.AbstractJsonProperty)
+                if (prop.Name == this.metaType.AbstractJsonProperty)
                 {
                     result = result.AddModifiers(Token(SyntaxKind.AbstractKeyword));
                 }
                 return result;
             }
 
-            var abstractImplementations = await sourceMetaType.GetPropertyOverridesAsync();
-            var isAbstract = sourceMetaType.IsAbstractType;
+            var abstractImplementations = await this.metaType.GetPropertyOverridesAsync();
+            var isAbstract = this.metaType.IsAbstractType;
             var isSealed = partialImplementation?.TypeSymbol.IsSealed ?? false;
-            var localProperties = await sourceMetaType.GetLocalPropertiesAsync();
-            var directAncestor = await sourceMetaType.GetDirectAncestorAsync();
+            var localProperties = await this.metaType.GetLocalPropertiesAsync();
+            var directAncestor = await this.metaType.GetDirectAncestorAsync();
 
-            innerMembers.AddRange(await sourceMetaType.JsonCtorAsync(hasAncestor, isSealed));
+            innerMembers.AddRange(await JsonCtorAsync(hasAncestor, isSealed));
 
-            if (_responseMessageTypeSymbol != null && SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, sourceMetaType.TypeSymbol))
+            if (context.ResponseMessageType != null && SymbolEqualityComparer.Default.Equals(context.ResponseMessageType, this.metaType.TypeSymbol))
             {
-                innerMembers.AddRange(await ResponseMessageSyntax.AbstractResponseCtorAsync(sourceMetaType));
+                innerMembers.AddRange(await ResponseMessageSyntax.AbstractResponseCtorAsync(this.metaType));
             }
-            else if (_responseMessageTypeSymbol != null && SymbolEqualityComparer.Default.Equals(_responseMessageTypeSymbol, directAncestor.TypeSymbol))
+            else if (context.ResponseMessageType != null && SymbolEqualityComparer.Default.Equals(context.ResponseMessageType, directAncestor.TypeSymbol))
             {
-                innerMembers.AddRange(await ResponseCtorAsync(sourceMetaType));
+                innerMembers.AddRange(await ResponseCtorAsync());
             }
-            else if (_messageTypeSymbol != null && SymbolEqualityComparer.Default.Equals(_messageTypeSymbol, sourceMetaType.TypeSymbol))
+            else if (context.MessageType != null && SymbolEqualityComparer.Default.Equals(context.MessageType, this.metaType.TypeSymbol))
             {
-                innerMembers.Add(MessageSyntax.AbstractMessageCtor(sourceMetaType));
+                innerMembers.Add(MessageSyntax.AbstractMessageCtor(metaType));
             }
-            else if (_messageTypeSymbol != null && sourceMetaType.IsAssignableFrom(_messageTypeSymbol))
+            else if (context.MessageType != null && this.metaType.IsAssignableFrom(context.MessageType))
             {
-                innerMembers.Add(await MessageCtorAsync(sourceMetaType, directAncestor));
+                innerMembers.Add(await MessageCtorAsync(directAncestor));
             }
             else
             {
-                innerMembers.AddRange(await PublicCtorAsync(sourceMetaType, hasAncestor));
+                innerMembers.AddRange(await PublicCtorAsync(hasAncestor));
             }
 
             innerMembers.AddRange(abstractImplementations);
             innerMembers.AddRange(localProperties.Select(CreatePropertyDeclaration));
             if (localProperties.Count > 0)
             {
-                innerMembers.Add(await ToJsonMethodAsync(sourceMetaType, isSealed));
+                innerMembers.Add(await ToJsonMethodAsync(isSealed));
             }
 
-            var partialClass = ClassDeclaration(sourceMetaType.ClassNameIdentifier)
-                 .AddBaseListTypes(sourceMetaType.SemanticModel.AsFullyQualifiedBaseType((TypeDeclarationSyntax)sourceMetaType.DeclarationSyntax).ToArray())
-                 .WithModifiers(sourceMetaType.DeclarationSyntax.Modifiers)
+            var partialClass = ClassDeclaration(this.metaType.ClassNameIdentifier)
+                 .AddBaseListTypes(this.metaType.SemanticModel.AsFullyQualifiedBaseType((TypeDeclarationSyntax)this.metaType.DeclarationSyntax, metaType.TransformationContext).ToArray())
+                 .WithModifiers(this.metaType.DeclarationSyntax.Modifiers)
                  .WithMembers(List(innerMembers));
 
             if (isAbstract)
@@ -114,7 +113,7 @@ namespace CodeGeneration.Chorus
                 UsingDirective(ParseName("Chorus.Common.Text.Json")),
             });
 
-            var ns = sourceMetaType.DeclarationSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.WithoutTrivia();
+            var ns = this.metaType.DeclarationSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.WithoutTrivia();
             var members = NamespaceDeclaration(ns)
                  .WithUsings(usingsDirectives)
                  .WithMembers(outerMembers);
@@ -122,34 +121,34 @@ namespace CodeGeneration.Chorus
             return members;
         }
 
-        private static async Task<IEnumerable<MemberDeclarationSyntax>> JsonCtorAsync(this MetaType sourceMetaType, bool hasAncestor, bool isSealed)
+        private async Task<IEnumerable<MemberDeclarationSyntax>> JsonCtorAsync(bool hasAncestor, bool isSealed)
         {
-            bool IsRequired(MetaProperty prop) => prop.IsIgnored || sourceMetaType.AbstractJsonProperty == prop.Name ? false : true;
+            bool IsRequired(MetaProperty prop) => prop.IsIgnored || this.metaType.AbstractJsonProperty == prop.Name ? false : true;
 
             var paramName = IdentifierName("json");
             var param = Parameter(paramName.Identifier).WithType(ParseName(nameof(System.Text.Json.JsonElement)));
 
             var body = new List<StatementSyntax>();
 
-            if (sourceMetaType.HasAbstractJsonProperty)
+            if (this.metaType.HasAbstractJsonProperty)
             {
-                var f = (await sourceMetaType.GetLocalPropertiesAsync()).Single(p => p.Name == sourceMetaType.AbstractJsonProperty);
+                var f = (await this.metaType.GetLocalPropertiesAsync()).Single(p => p.Name == this.metaType.AbstractJsonProperty);
                 var thisExpresion = Syntax.ThisDot(f.NameAsProperty);
 
                 var expression = IfStatement(
                     BinaryExpression(SyntaxKind.NotEqualsExpression, f.GetJsonValue(paramName), Syntax.ThisDot(f.NameAsProperty)),
                     ThrowStatement(
                         ObjectCreationExpression(Syntax.GetTypeSyntax(typeof(System.Text.Json.JsonException))).AddArgumentListArguments(
-                            Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"Invalid {sourceMetaType.AbstractJsonProperty} specified."))))));
+                            Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"Invalid {this.metaType.AbstractJsonProperty} specified."))))));
                 body.Add(expression);
             }
 
             body.AddRange(
-                (await sourceMetaType.GetLocalPropertiesAsync()).Where(IsRequired).Select(f =>
+                (await this.metaType.GetLocalPropertiesAsync()).Where(IsRequired).Select(f =>
                     ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, IdentifierName(f.NameAsProperty.Identifier), f.GetJsonValue(paramName))))
                 );
 
-            var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+            var ctor = ConstructorDeclaration(this.metaType.ClassNameIdentifier)
                 .AddModifiers(Token(SyntaxKind.InternalKeyword));
 
             if (!isSealed)
@@ -170,40 +169,40 @@ namespace CodeGeneration.Chorus
             return new[] { ctor };
         }
 
-        private static async Task<MemberDeclarationSyntax> MessageCtorAsync(MetaType sourceMetaType, MetaType directAncestor)
+        private async Task<MemberDeclarationSyntax> MessageCtorAsync(MetaType directAncestor)
         {
-            static bool isRequired(MetaProperty p) => !(
+           bool isRequired(MetaProperty p) => !(
                 p.IsReadonly ||
                 p.IsAbstract ||
                 p.HasSetMethod ||
-                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _messageTypeSymbol));
+                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, context.MessageType));
 
-            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired);
+            var localProperties = (await this.metaType.GetLocalPropertiesAsync()).Where(isRequired);
             var body = Block(localProperties.Select(p => p.PropertyAssignment));
 
-            var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired);
+            var allProperties = (await this.metaType.GetAllPropertiesAsync()).Where(isRequired);
             var orderedArguments = allProperties.Where(p => !p.IsNullable).OrderBy(p => p.Name)
                     .Concat(allProperties.Where(p => p.IsNullable).OrderBy(p => p.Name));
 
-            var arguments = (await sourceMetaType.GetInheritedPropertiesAsync())
+            var arguments = (await this.metaType.GetInheritedPropertiesAsync())
                .Where(isRequired);
 
             var baseAssignment =
-                SymbolEqualityComparer.Default.Equals(_messageTypeSymbol, directAncestor.TypeSymbol) ?
+                SymbolEqualityComparer.Default.Equals(context.MessageType, directAncestor.TypeSymbol) ?
                     MessageSyntax.DirectDescendentConstructorInitializer :
                     MessageSyntax.ConstructorInitializer(arguments);
 
             var parameters = MessageSyntax.DefaultParameters.Concat(CreateParameterList(orderedArguments));
-            return ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+            return ConstructorDeclaration(this.metaType.ClassNameIdentifier)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, parameters)))
                 .WithInitializer(baseAssignment)
                 .WithBody(body);
         }
 
-        private static async Task<ConstructorInitializerSyntax> GetBaseAssignmentListAsync(MetaType sourceMetaType, Func<MetaProperty, bool> isRequired)
+        private async Task<ConstructorInitializerSyntax> GetBaseAssignmentListAsync(Func<MetaProperty, bool> isRequired)
         {
-            var props = await sourceMetaType.GetInheritedPropertiesAsync();
+            var props = await this.metaType.GetInheritedPropertiesAsync();
             if (props.Count > 0)
             {
                 return ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, CreateAssignmentList(props.Where(isRequired)));
@@ -211,13 +210,13 @@ namespace CodeGeneration.Chorus
             return null;
         }
 
-        private static async Task<IEnumerable<MemberDeclarationSyntax>> PublicCtorAsync(MetaType sourceMetaType, bool hasAncestor)
+        private async Task<IEnumerable<MemberDeclarationSyntax>> PublicCtorAsync(bool hasAncestor)
         {
-            static bool isRequired(MetaProperty p) => !(
+            bool isRequired(MetaProperty p) => !(
                 p.IsReadonly ||
                 p.IsAbstract ||
                 (p.IsNullable && p.HasSetMethod) ||
-                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _messageTypeSymbol));
+                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, context.MessageType));
 
             IEnumerable<ParameterSyntax> CreateParameterList(IEnumerable<MetaProperty> properties)
             {
@@ -232,7 +231,7 @@ namespace CodeGeneration.Chorus
                         switch (property.Name)
                         {
                             case "PartitionKey" when string.Compare(property.ElementType.MetadataName, "string", StringComparison.InvariantCultureIgnoreCase) == 0:
-                                ExpressionSyntax defaultPartion = LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"{sourceMetaType.ClassName.Identifier.ValueText.Replace("Definition", "")}"));
+                                ExpressionSyntax defaultPartion = LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"{this.metaType.ClassName.Identifier.ValueText.Replace("Definition", "")}"));
                                 return parameter.WithType(property.TypeSyntax).WithDefault(EqualsValueClause(defaultPartion));
                         }
                     }
@@ -243,21 +242,21 @@ namespace CodeGeneration.Chorus
             }
 
 
-            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired);
+            var localProperties = (await this.metaType.GetLocalPropertiesAsync()).Where(isRequired);
             var body = Block(localProperties.Select(p => p.PropertyAssignment));
 
-            var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired);
+            var allProperties = (await this.metaType.GetAllPropertiesAsync()).Where(isRequired);
             var orderedArguments = allProperties.Where(p => !p.IsOptional).OrderBy(p => p.Name)
                     .Concat(allProperties.Where(p => p.IsOptional).OrderBy(p => p.Name));
 
-            var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
-                .AddModifiers(Token(sourceMetaType.HasAbstractJsonProperty ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
+            var ctor = ConstructorDeclaration(this.metaType.ClassNameIdentifier)
+                .AddModifiers(Token(this.metaType.HasAbstractJsonProperty ? SyntaxKind.ProtectedKeyword : SyntaxKind.PublicKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, CreateParameterList(orderedArguments))))
                 .WithBody(body);
 
             if (hasAncestor)
             {
-                var baseAssignment = await GetBaseAssignmentListAsync(sourceMetaType, isRequired);
+                var baseAssignment = await GetBaseAssignmentListAsync(isRequired);
                 if (baseAssignment != null)
                 {
                     ctor = ctor.WithInitializer(baseAssignment);
@@ -325,36 +324,36 @@ namespace CodeGeneration.Chorus
 
         }
 
-        private static async Task<IEnumerable<MemberDeclarationSyntax>> ResponseCtorAsync(MetaType sourceMetaType)
+        private async Task<IEnumerable<MemberDeclarationSyntax>> ResponseCtorAsync()
         {
             static IEnumerable<ParameterSyntax> CreateParameterList(IEnumerable<MetaProperty> properties)
             {
                 return properties.Select(f => Parameter(f.NameAsArgument.Identifier).WithType(f.Type.GetFullyQualifiedSymbolName(NullableAnnotation.NotAnnotated)));
             }
 
-            static bool isRequired(MetaProperty p) => !(
+            bool isRequired(MetaProperty p) => !(
                 p.IsReadonly ||
                 p.IsAbstract ||
                 p.HasSetMethod ||
-                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _responseMessageTypeSymbol) ||
-                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, _messageTypeSymbol));
+                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, context.ResponseMessageType) ||
+                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, context.MessageType));
 
 
-            var localProperties = (await sourceMetaType.GetLocalPropertiesAsync()).Where(isRequired);
+            var localProperties = (await this.metaType.GetLocalPropertiesAsync()).Where(isRequired);
             var body = Block(localProperties.Select(p => p.PropertyAssignment));
 
-            var allProperties = (await sourceMetaType.GetAllPropertiesAsync()).Where(isRequired);
+            var allProperties = (await this.metaType.GetAllPropertiesAsync()).Where(isRequired);
 
             var parameters = ResponseMessageSyntax.RequiredParameters
                     .Concat(CreateParameterList(allProperties.Where(p => !p.HasSetMethod).OrderBy(p => p.Name)))
                     .Concat(ResponseMessageSyntax.OptionalParameters);
 
-            var ctor = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
+            var ctor = ConstructorDeclaration(this.metaType.ClassNameIdentifier)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, parameters)))
                .WithBody(body);
 
-            var props = (await sourceMetaType.GetInheritedPropertiesAsync())
+            var props = (await this.metaType.GetInheritedPropertiesAsync())
                 .Where(isRequired)
                 .OrderBy(p => p.Name)
                 .Select(p => p.NameAsArgument);
@@ -364,11 +363,11 @@ namespace CodeGeneration.Chorus
             var arguments = CreateAssignmentList(props);
             ctor = ctor.WithInitializer(ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
 
-            return new[] { ctor, ResponseMessageSyntax.DefauiltErrorCtor(sourceMetaType) };
+            return new[] { ctor, ResponseMessageSyntax.DefauiltErrorCtor(this.metaType) };
         }
 
 
-        private static async Task<MethodDeclarationSyntax> ToJsonMethodAsync(this MetaType sourceMetaType, bool isSealed)
+        private async Task<MethodDeclarationSyntax> ToJsonMethodAsync(bool isSealed)
         {
 
             static InvocationExpressionSyntax WriteJsonValue(MetaProperty metaProperty)
@@ -394,13 +393,13 @@ namespace CodeGeneration.Chorus
                 return !prop.IsIgnored;
             }
 
-            var properties = await sourceMetaType.GetLocalPropertiesAsync();
+            var properties = await this.metaType.GetLocalPropertiesAsync();
             var body = new List<ExpressionStatementSyntax>();
 
-            var hasAncestor = await sourceMetaType.HasAncestorAsync();
+            var hasAncestor = await this.metaType.HasAncestorAsync();
             if (hasAncestor)
             {
-                var ancestor = await sourceMetaType.GetDirectAncestorAsync();
+                var ancestor = await this.metaType.GetDirectAncestorAsync();
                 var callAncestor = InvocationExpression(Syntax.BaseDot(IdentifierName($"ToJson"))
                            .WithOperatorToken(Token(SyntaxKind.DotToken)))
                            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(_jsonWriterParameterName)))

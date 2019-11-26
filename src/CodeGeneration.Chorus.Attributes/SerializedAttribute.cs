@@ -28,5 +28,4 @@ namespace CodeGeneration.Chorus
         /// </summary>
         public bool Value { get; }
     }
-
 }

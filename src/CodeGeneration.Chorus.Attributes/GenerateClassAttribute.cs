@@ -27,7 +27,7 @@ namespace CodeGeneration.Chorus
         public Type AbstractAttributeType { get; set; }
 
         /// <summary>
-        /// Gets or sets the AbstractField
+        /// Gets or sets the AbstractField.
         /// </summary>
         public string AbstractField { get; set; }
 

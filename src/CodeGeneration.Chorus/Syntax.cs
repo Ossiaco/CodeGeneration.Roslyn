@@ -42,12 +42,12 @@ namespace CodeGeneration.Chorus
             yield return SimpleBaseType(ParseName(value.Identifier.ValueText));
         }
 
-        internal static IEnumerable<BaseTypeSyntax> AsFullyQualifiedBaseType(this SemanticModel model, TypeDeclarationSyntax value)
+        internal static IEnumerable<BaseTypeSyntax> AsFullyQualifiedBaseType(this SemanticModel model, TypeDeclarationSyntax value, ITransformationContext context)
         {
             if (value.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
                 var typeSymbol = ((INamedTypeSymbol)model.GetTypeInfo(nameSyntax).Type);
-                if (!typeSymbol.Equals(CodeGen.JsonSerializeableType))
+                if (!typeSymbol.Equals(context.JsonSerializeableType))
                 {
                     SimpleNameSyntax leafName = IdentifierName(typeSymbol.Name.Substring(1));
                     TypeSyntax typeSyntax = (typeSymbol.ContainingSymbol as INamespaceOrTypeSymbol)?.GetFullyQualifiedSymbolName(NullableAnnotation.None) is NameSyntax parent ? (NameSyntax)QualifiedName(parent, leafName) : leafName;

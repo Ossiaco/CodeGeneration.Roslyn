@@ -11,24 +11,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="TestSources\IBooleanType.cs" />
-    <Compile Remove="TestSources\IByteType.cs" />
-    <Compile Remove="TestSources\IDateTimeOffsetType.cs" />
-    <Compile Remove="TestSources\IDecimalType.cs" />
-    <Compile Remove="TestSources\IDoubleType.cs" />
-    <Compile Remove="TestSources\IGuidType.cs" />
-    <Compile Remove="TestSources\IInt16Type.cs" />
-    <Compile Remove="TestSources\IInt32Type.cs" />
-    <Compile Remove="TestSources\IInt64Type.cs" />
-    <Compile Remove="TestSources\IResource.cs" />
-    <Compile Remove="TestSources\IResource2.cs" />
-    <Compile Remove="TestSources\IResource3.cs" />
-    <Compile Remove="TestSources\ISingleType.cs" />
-    <Compile Remove="TestSources\IStringType.cs" />
-    <Compile Remove="TestSources\IUint16Type.cs" />
-    <Compile Remove="TestSources\IUint32Type.cs" />
-    <Compile Remove="TestSources\IUint64Type.cs" />
-    <Compile Remove="TestSources\IUriType.cs" />
+    <Compile Remove="NewFolder\**" />
+    <EmbeddedResource Remove="NewFolder\**" />
+    <None Remove="NewFolder\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -86,29 +71,10 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Strings.resx" Link="CommandLine\Strings.resx" />
-    <EmbeddedResource Include="TestSources\IBooleanType.cs" />
-    <EmbeddedResource Include="TestSources\IByteType.cs" />
-    <EmbeddedResource Include="TestSources\IDateTimeOffsetType.cs" />
-    <EmbeddedResource Include="TestSources\IDecimalType.cs" />
-    <EmbeddedResource Include="TestSources\IDoubleType.cs" />
-    <EmbeddedResource Include="TestSources\IGuidType.cs" />
-    <EmbeddedResource Include="TestSources\IInt16Type.cs" />
-    <EmbeddedResource Include="TestSources\IInt32Type.cs" />
-    <EmbeddedResource Include="TestSources\IInt64Type.cs" />
-    <EmbeddedResource Include="TestSources\IResource3.cs" />
-    <EmbeddedResource Include="TestSources\IResource2.cs" />
-    <EmbeddedResource Include="TestSources\IResource.cs" />
-    <EmbeddedResource Include="TestSources\ISingleType.cs" />
-    <EmbeddedResource Include="TestSources\IStringType.cs" />
-    <EmbeddedResource Include="TestSources\IUint16Type.cs" />
-    <EmbeddedResource Include="TestSources\IUint32Type.cs" />
-    <EmbeddedResource Include="TestSources\IUint64Type.cs" />
-    <EmbeddedResource Include="TestSources\IUriType.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CodeGeneration.Chorus\CodeGeneration.Chorus.csproj" />
-    <ProjectReference Include="..\CodeGeneration.Roslyn.Engine\CodeGeneration.Roslyn.Engine.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition=" !$(UseRoslynSource) ">
@@ -127,7 +93,6 @@
 
   <ItemGroup>
     <Folder Include="CommandLine\xlf\" />
-    <Folder Include="NewFolder\" />
     <Folder Include="Roslyn\Collections\" />
     <Folder Include="Roslyn\Utilities\" />
   </ItemGroup>

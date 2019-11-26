@@ -1,112 +1,29 @@
-﻿namespace CodeGeneration.Chorus
+﻿namespace CodeGeneration.Chorus.Json
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Collections.Immutable;
-    using System.Diagnostics;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
-    using CodeGeneration.Roslyn;
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-    internal static partial class CodeGen
+    internal partial class CodeGen
     {
         private static readonly IdentifierNameSyntax DefaultInstanceFieldName = SyntaxFactory.IdentifierName("DefaultInstance");
         private static readonly SyntaxToken NoneToken = SyntaxFactory.Token(SyntaxKind.None);
-        private static readonly SyntaxToken NullToken = SyntaxFactory.Token(SyntaxKind.NullKeyword);
-        private static readonly SyntaxToken DotToken = SyntaxFactory.Token(SyntaxKind.DotToken);
-        private static readonly IdentifierNameSyntax varType = SyntaxFactory.IdentifierName("var");
-        private static readonly IdentifierNameSyntax WithMethodName = SyntaxFactory.IdentifierName("With");
-        private static readonly IdentifierNameSyntax WithCoreMethodName = SyntaxFactory.IdentifierName("WithCore");
-        private static readonly AttributeSyntax DebuggerBrowsableNeverAttribute = SyntaxFactory.Attribute(
-            SyntaxFactory.ParseName(typeof(DebuggerBrowsableAttribute).FullName),
-            SyntaxFactory.AttributeArgumentList(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.AttributeArgument(
-                SyntaxFactory.MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    SyntaxFactory.ParseName(typeof(DebuggerBrowsableState).FullName),
-                    SyntaxFactory.IdentifierName(nameof(DebuggerBrowsableState.Never)))))));
         private static readonly AttributeSyntax PureAttribute = SyntaxFactory.Attribute(SyntaxFactory.ParseName(typeof(System.Diagnostics.Contracts.PureAttribute).FullName));
         public static readonly AttributeListSyntax PureAttributeList = SyntaxFactory.AttributeList().AddAttributes(PureAttribute);
-        private static readonly ThrowStatementSyntax ThrowNotImplementedException = SyntaxFactory.ThrowStatement(SyntaxFactory.ObjectCreationExpression(SyntaxFactory.ParseTypeName(typeof(NotImplementedException).FullName), SyntaxFactory.ArgumentList(), null));
-        private static readonly AttributeSyntax ObsoletePublicCtor = SyntaxFactory.Attribute(Syntax.GetTypeSyntax(typeof(ObsoleteAttribute))).AddArgumentListArguments(SyntaxFactory.AttributeArgument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal("This constructor for use with json deserializers only. Use the static Create factory method instead."))));
         private static ImmutableHashSet<INamedTypeSymbol> CheckedTypes = ImmutableHashSet<INamedTypeSymbol>.Empty;
 
-        internal static ImmutableDictionary<INamedTypeSymbol, MetaType> AllNamedTypeSymbols { get; private set; }
-        internal static ImmutableHashSet<INamedTypeSymbol> IntrinsicSymbols { get; private set; }
-        internal static ImmutableDictionary<INamedTypeSymbol, string> FormatStrings { get; private set; }
-        public static INamedTypeSymbol JsonSerializeableType;
-        private static INamedTypeSymbol _responseMessageTypeSymbol;
-        private static INamedTypeSymbol _messageTypeSymbol;
-        private static INamedTypeSymbol _vertexTypeSymbol;
-
-
-        private async static Task<ImmutableDictionary<INamedTypeSymbol, MetaType>> GetAllTypeDefinitionsAsync(CSharpCompilation compilation)
+        private readonly MetaType metaType;
+        private readonly ITransformationContext context;
+        public CodeGen (MetaType metaType, ITransformationContext transformationContext)
         {
-            JsonSerializeableType = compilation.GetTypeByMetadataName(typeof(IJsonSerialize).FullName);
-            _responseMessageTypeSymbol = compilation.GetTypeByMetadataName("Chorus.Common.Messaging.IResponseMessage");
-            _messageTypeSymbol = compilation.GetTypeByMetadataName("Chorus.Common.Messaging.IMessage");
-            _vertexTypeSymbol = compilation.GetTypeByMetadataName("Chorus.Azure.Cosmos.IVertex");
-            var result = new ConcurrentDictionary<INamedTypeSymbol, MetaType>(SymbolEqualityComparer.Default);
-
-            async Task TryAdd(INamedTypeSymbol typeSymbol)
-            {
-                var syntax = await typeSymbol.DeclaringSyntaxReferences[0].GetSyntaxAsync();
-                var inputSemanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
-                result.TryAdd(typeSymbol, new MetaType(typeSymbol, syntax as BaseTypeDeclarationSyntax, inputSemanticModel));
-            }
-
-            await Task.WhenAll(GetAllTypeSymbolsVisitor.Execute(compilation).Select(TryAdd));
-            return result.ToImmutableDictionary(SymbolEqualityComparer.Default);
-        }
-
-        private static ImmutableHashSet<INamedTypeSymbol> GetIntrinsicSymbols(CSharpCompilation compilation)
-        {
-            var types = new[] { typeof(byte),
-                typeof(short), typeof(ushort),
-                typeof(int), typeof(uint),
-                typeof(long), typeof(ulong),
-                typeof(decimal), typeof(double), typeof(float),
-                typeof(string), typeof(Guid), typeof(Uri),
-                typeof(DateTimeOffset)
-            };
-            var values = types.Select(t => compilation.GetTypeByMetadataName(t.FullName)).ToList();
-            return values.ToImmutableHashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-        }
-
-        public static async Task<RichGenerationResult> GenerateFromInterfaceAsync(InterfaceDeclarationSyntax applyTo, TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
-        {
-            try
-            {
-                if (AllNamedTypeSymbols == null)
-                {
-                    AllNamedTypeSymbols = await GetAllTypeDefinitionsAsync(context.Compilation);
-                }
-
-                if (IntrinsicSymbols == null)
-                {
-                    IntrinsicSymbols = GetIntrinsicSymbols(context.Compilation);
-                }
-
-                // Ensure code gets generated only once per definition
-                var typeSymbol = context.SemanticModel.GetDeclaredSymbol(applyTo);
-                if (typeSymbol != null)
-                {
-                    if (AllNamedTypeSymbols.TryGetValue(typeSymbol, out var metaType))
-                    {
-                        return new RichGenerationResult() { Members = SyntaxFactory.List(await GenerateAsync(metaType, progress, cancellationToken)) };
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                progress.Report(Diagnostic.Create(UnexpectedDescriptor, applyTo.GetLocation(), e.Message));
-
-            }
-            return new RichGenerationResult();
+            this.metaType = metaType;
+            this.context = transformationContext;
         }
 
         private static DiagnosticDescriptor NotSupportedDescriptor => new DiagnosticDescriptor("OCC001",
@@ -121,12 +38,12 @@
 
         private static bool IsPartialImplementationOfInterface(MetaType m, MetaType metaType)
         {
-            return m.IsPartialClass 
+            return m.IsPartialClass
                 && m.TypeSymbol.Interfaces.Any(i => i.Equals(metaType.TypeSymbol))
                 && m.TypeSymbol.ContainingNamespace.Equals(metaType.TypeSymbol.ContainingNamespace);
         }
 
-        private static async Task<ImmutableArray<MemberDeclarationSyntax>> GenerateAsync(MetaType metaType, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        internal async Task<ImmutableArray<MemberDeclarationSyntax>> GenerateAsync()
         {
             try
             {
@@ -138,21 +55,22 @@
                         switch (key.TypeKind)
                         {
                             case TypeKind.Interface:
-                                var partialImplementation = AllNamedTypeSymbols.Values.FirstOrDefault(m => IsPartialImplementationOfInterface(m, metaType));
-                                var result = await GenerateDependenciesAsync(metaType, progress, cancellationToken).ConfigureAwait(false);
-                                result = result.Add(await CreateClassDeclarationAsync(metaType, partialImplementation).ConfigureAwait(false));
-                                var descendents = await metaType.GetDirectDescendentsAsync();
-                                var tasks = await Task.WhenAll(descendents.Select(to => GenerateAsync(to, progress, cancellationToken))).ConfigureAwait(false);
-                                foreach (var r in tasks)
-                                {
-                                    result = result.AddRange(r);
-                                }
-                                result = result.Add(await CreateJsonSerializerForinterfaceAsync(metaType));
+                                var result = ImmutableArray<MemberDeclarationSyntax>.Empty;
+                                var partialImplementation = context.AllNamedTypeSymbols.Values.FirstOrDefault(m => IsPartialImplementationOfInterface(m, metaType));
+                                //var result = await GenerateDependenciesAsync(metaType, context, progress, cancellationToken).ConfigureAwait(false);
+                                result = result.Add(await CreateClassDeclarationAsync(partialImplementation).ConfigureAwait(false));
+                                //var descendents = await metaType.GetDirectDescendentsAsync();
+                                //var tasks = await Task.WhenAll(descendents.Select(to => GenerateAsync(to, context, progress, cancellationToken))).ConfigureAwait(false);
+                                //foreach (var r in tasks)
+                                //{
+                                //    result = result.AddRange(r);
+                                //}
+                                result = result.Add(await CreateJsonSerializerForinterfaceAsync());
                                 return result;
                             case TypeKind.Enum:
-                                return ImmutableArray<MemberDeclarationSyntax>.Empty.Add(CreateEnumSerializerClass(metaType));
+                                return ImmutableArray<MemberDeclarationSyntax>.Empty.Add(CreateEnumSerializerClass());
                             default:
-                                progress.Report(Diagnostic.Create(NotSupportedDescriptor, metaType.DeclarationSyntax.GetLocation(), key.TypeKind, key.Name));
+                                context.Progress.Report(Diagnostic.Create(NotSupportedDescriptor, metaType.DeclarationSyntax.GetLocation(), key.TypeKind, key.Name));
                                 break;
                         }
                     }
@@ -160,27 +78,27 @@
             }
             catch (Exception e)
             {
-                progress.Report(Diagnostic.Create(UnexpectedDescriptor, metaType.DeclarationSyntax?.GetLocation() ?? Location.None, e.Message));
+                context.Progress.Report(Diagnostic.Create(UnexpectedDescriptor, metaType.DeclarationSyntax?.GetLocation() ?? Location.None, e.Message));
             }
             return ImmutableArray<MemberDeclarationSyntax>.Empty;
         }
 
-        private static async Task<ImmutableArray<MemberDeclarationSyntax>> GenerateDependenciesAsync(MetaType metaType, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
-        {
-            var allProperties = await metaType.GetLocalPropertiesAsync();
-            var dependencies = allProperties.Select(p => p.SafeType).Where(s => !IntrinsicSymbols.Contains(s)).ToImmutableArray();
-            var result = ImmutableArray<MemberDeclarationSyntax>.Empty;
-            if (dependencies.Length > 0)
-            {
-                var tasks = AllNamedTypeSymbols.Where(to => dependencies.Contains(to.Key)).Select(to => GenerateAsync(to.Value, progress, cancellationToken));
-                var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-                foreach (var r in results)
-                {
-                    result = result.AddRange(r);
-                }
-            }
-            return result;
-        }
+        //private async Task<ImmutableArray<MemberDeclarationSyntax>> GenerateDependenciesAsync(TransformationContext context, IProgress<Diagnostic> progress, CancellationToken cancellationToken)
+        //{
+        //    var allProperties = await metaType.GetLocalPropertiesAsync();
+        //    var dependencies = allProperties.Select(p => p.SafeType).Where(s => !context.IntrinsicSymbols.Contains(s)).ToImmutableArray();
+        //    var result = ImmutableArray<MemberDeclarationSyntax>.Empty;
+        //    if (dependencies.Length > 0)
+        //    {
+        //        var tasks = context.AllNamedTypeSymbols.Where(to => dependencies.Contains(to.Key)).Select(to => GenerateAsync(to.Value, context, progress, cancellationToken));
+        //        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+        //        foreach (var r in results)
+        //        {
+        //            result = result.AddRange(r);
+        //        }
+        //    }
+        //    return result;
+        //}
 
         private static bool IsAssignableFrom(INamedTypeSymbol from, INamedTypeSymbol to)
         {
@@ -208,7 +126,6 @@
                 return updatedSet != currentSet;
             }
         }
-
 
         //private ClassDeclarationSyntax CreateOrleansSerializer()
         //{

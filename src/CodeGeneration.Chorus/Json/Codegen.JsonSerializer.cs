@@ -1,4 +1,4 @@
-﻿namespace CodeGeneration.Chorus
+﻿namespace CodeGeneration.Chorus.Json
 {
     using System.Collections.Generic;
     using System.Linq;
@@ -28,17 +28,17 @@
         private static readonly ParameterSyntax _bufferWriterParameter = Parameter(_jsonBufferWriterParameterName.Identifier).WithType(_bufferWriterType).AddModifiers(Token(SyntaxKind.ThisKeyword));
         private static readonly ParameterSyntax _propertyNameParameter = Parameter(_propertyNameParameterName.Identifier).WithType(_stringTypeSyntax);
 
-        private static async Task<MemberDeclarationSyntax> CreateJsonSerializerForinterfaceAsync(MetaType sourceMetaType)
+        private async Task<MemberDeclarationSyntax> CreateJsonSerializerForinterfaceAsync()
         {
 
-            var className = Identifier($"{sourceMetaType.ClassNameIdentifier.Text}JsonSerializer");
+            var className = Identifier($"{metaType.ClassNameIdentifier.Text}JsonSerializer");
             var namespaceName = ParseName(typeof(System.Text.Json.JsonElement).Namespace);
 
             var innerMembers = new List<MemberDeclarationSyntax>();
-            innerMembers.AddRange(await StaticGetValueMethodsAsync(sourceMetaType));
+            innerMembers.AddRange(await StaticGetValueMethodsAsync());
 
             var partialClass = ClassDeclaration(className)
-                .WithModifiers(sourceMetaType.DeclarationSyntax.Modifiers)
+                .WithModifiers(metaType.DeclarationSyntax.Modifiers)
                 .AddModifiers(Token(SyntaxKind.StaticKeyword))
                 .WithMembers(List(innerMembers));
 
@@ -46,7 +46,7 @@
             declarations = declarations.Add(partialClass);
             var usingsDirectives = List(new[] {
                 UsingDirective(ParseName("Chorus.Common.Text.Json")),
-                UsingDirective(sourceMetaType.Namespace),
+                UsingDirective(metaType.Namespace),
             });
 
             return NamespaceDeclaration(namespaceName)
@@ -54,14 +54,14 @@
                 .WithMembers(declarations);
         }
 
-        private static async Task<IEnumerable<MethodDeclarationSyntax>> JsonGetMethodsAsync(this MetaType sourceMetaType, string className, IdentifierNameSyntax interfaceType)
+        private async Task<IEnumerable<MethodDeclarationSyntax>> JsonGetMethodsAsync(string className, IdentifierNameSyntax interfaceType)
         {
             var getArrayMethodName = Identifier($"Get{className}Array");
             var getMethodName = Identifier($"Get{className}");
             var tryGetMethodName = Identifier($"TryGet{className}");
             var tryGetArrayMethodName = Identifier($"TryGet{className}Array");
             var methodNameParameter = IdentifierName($"Get{className}");
-            var classNameSyntax = sourceMetaType.ClassName;
+            var classNameSyntax = metaType.ClassName;
 
             var interfaceArrayType = ArrayType(interfaceType)
                     .AddRankSpecifiers(ArrayRankSpecifier()
@@ -69,9 +69,9 @@
 
             var result = new List<MethodDeclarationSyntax>();
 
-            if (sourceMetaType.IsAbstractType)
+            if (metaType.IsAbstractType)
             {
-                result.Add(await AbstractGetObjectAsync(sourceMetaType, interfaceType, getMethodName));
+                result.Add(await AbstractGetObjectAsync(interfaceType, getMethodName));
             }
             else
             {
@@ -129,7 +129,7 @@
             return result;
         }
 
-        public static ExpressionSyntax FormatValue(this TypedConstant constant)
+        public static ExpressionSyntax FormatValue(TypedConstant constant)
         {
             //TODO: add hex formatting
             switch (constant.Type)
@@ -140,16 +140,16 @@
         }
         private static SwitchExpressionArmSyntax GetArm(MetaType descendent, INamedTypeSymbol abstractAtrribute)
         {
-            var constValue = descendent.GetAbstractJsonAttributeValue(abstractAtrribute).FormatValue();
+            var constValue = FormatValue(descendent.GetAbstractJsonAttributeValue(abstractAtrribute));
             var newObjectExpression = ObjectCreationExpression(descendent.FullyQualifiedClassName, ArgumentList(SingletonSeparatedList(Argument(_jsonElementParameterName))), null);
             return SwitchExpressionArm(ConstantPattern(constValue), newObjectExpression);
         }
 
 
-        private static async Task<MethodDeclarationSyntax> AbstractGetObjectAsync(MetaType sourceMetaType, IdentifierNameSyntax interfaceType, SyntaxToken getMethodName)
+        private async Task<MethodDeclarationSyntax> AbstractGetObjectAsync(IdentifierNameSyntax interfaceType, SyntaxToken getMethodName)
         {
             var paramName = IdentifierName("json");
-            var abstractMetaType = sourceMetaType;
+            var abstractMetaType = metaType;
             while (!abstractMetaType.HasAbstractJsonProperty)
             {
                 abstractMetaType = await abstractMetaType.GetDirectAncestorAsync();
@@ -170,7 +170,7 @@
                 ThrowExpression(ObjectCreationExpression(Syntax.GetTypeSyntax(typeof(System.Text.Json.JsonException))).AddArgumentListArguments(
                     Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"Invalid {abstractMetaType.AbstractJsonProperty} specified."))))));
 
-            var allDescendents = await sourceMetaType.GetResursiveDescendentsAsync();
+            var allDescendents = await metaType.GetResursiveDescendentsAsync();
             var arms = allDescendents.Select(t => GetArm(t, abstractMetaType.AbstractAttribute)).ToList();
             arms.Add(defaultThrow);
 
@@ -181,13 +181,13 @@
                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
-        private static async Task<IEnumerable<MethodDeclarationSyntax>> StaticGetValueMethodsAsync(MetaType sourceMetaType)
+        private async Task<IEnumerable<MethodDeclarationSyntax>> StaticGetValueMethodsAsync()
         {
-            var className = sourceMetaType.ClassNameIdentifier.Text;
-            var interfaceType = IdentifierName(sourceMetaType.InterfaceNameIdentifier);
+            var className = metaType.ClassNameIdentifier.Text;
+            var interfaceType = IdentifierName(metaType.InterfaceNameIdentifier);
 
             var result = new List<MethodDeclarationSyntax>();
-            result.AddRange(await sourceMetaType.JsonGetMethodsAsync(className, interfaceType));
+            result.AddRange(await JsonGetMethodsAsync(className, interfaceType));
             return result;
         }
 

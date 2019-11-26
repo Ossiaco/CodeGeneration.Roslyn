@@ -36,7 +36,7 @@ namespace CodeGeneration.Chorus
             {
                 ElementType = ElementType;
             }
-            IsJsonSerializeable = IsElementTypeAssignableFrom(CodeGen.JsonSerializeableType);
+            IsJsonSerializeable = IsElementTypeAssignableFrom(type.TransformationContext.JsonSerializeableType);
         }
 
         public ITypeSymbol ElementKeyType => GetDictionaryType(Symbol.Type)?.TypeArguments[0];

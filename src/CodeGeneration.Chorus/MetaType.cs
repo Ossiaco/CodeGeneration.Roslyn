@@ -4,6 +4,7 @@
 
 namespace CodeGeneration.Chorus
 {
+    using CodeGeneration.Chorus.Json;
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,8 +12,10 @@ namespace CodeGeneration.Chorus
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Diagnostics;
+    using System.IO;
     using System.Linq;
     using System.Threading.Tasks;
+
 
     [DebuggerDisplay("{TypeSymbol?.Name}")]
     internal class MetaType
@@ -39,7 +42,7 @@ namespace CodeGeneration.Chorus
 
         private ImmutableHashSet<MetaProperty> _localProperties;
 
-        public MetaType(INamedTypeSymbol typeSymbol, BaseTypeDeclarationSyntax declarationSyntax, SemanticModel semanticModel)
+        public MetaType(INamedTypeSymbol typeSymbol, BaseTypeDeclarationSyntax declarationSyntax, SemanticModel semanticModel, ITransformationContext context)
         {
             _localProperties = null;
             _allProperties = null;
@@ -51,6 +54,7 @@ namespace CodeGeneration.Chorus
             _descendents = null;
             _abstractImplementations = null;
 
+            this.TransformationContext = context;
             TypeSymbol = typeSymbol;
             DeclarationSyntax = declarationSyntax;
             SemanticModel = semanticModel;
@@ -77,6 +81,12 @@ namespace CodeGeneration.Chorus
             {
                 IsEnumAsString = true;
                 JsonStringEnumFormat = (JsonStringEnumFormat)stringEnumAttribute.ConstructorArguments[0].Value;
+            }
+
+            if (declarationSyntax != null)
+            {
+                var fi = new FileInfo(Path.Combine(context.IntermediateOutputDirectory, declarationSyntax.SyntaxTree.FilePath.Substring(context.RootLength)));
+                OutputFilePath = new FileInfo(Path.Combine(fi.DirectoryName, Path.GetFileNameWithoutExtension(fi.Name) + $".generated.cs"));
             }
         }
 
@@ -118,7 +128,13 @@ namespace CodeGeneration.Chorus
 
         public NameSyntax Namespace => DeclarationSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.WithoutTrivia();
 
+        public FileInfo OutputFilePath { get; }
+
         public SemanticModel SemanticModel { get; }
+
+        public string SourceFilePath => DeclarationSyntax.SyntaxTree.FilePath;
+
+        public ITransformationContext TransformationContext { get; }
 
         public INamedTypeSymbol TypeSymbol { get; private set; }
 
@@ -201,12 +217,12 @@ namespace CodeGeneration.Chorus
             if (DeclarationSyntax?.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
                 var symbol = (INamedTypeSymbol)SemanticModel.GetTypeInfo(nameSyntax).Type;
-                if (!symbol.Equals(CodeGen.JsonSerializeableType))
+                if (!symbol.Equals(TransformationContext.JsonSerializeableType))
                 {
                     return _directAncestor = await SafeGetTypeAsync(symbol);
                 }
             }
-            return _directAncestor = new MetaType(null, null, SemanticModel);
+            return _directAncestor = new MetaType(null, null, SemanticModel, TransformationContext);
         }
 
         public async Task<IEnumerable<MetaType>> GetDirectAncestorsAsync()
@@ -232,7 +248,7 @@ namespace CodeGeneration.Chorus
                 return _descendents.Value;
             }
 
-            var results = await Task.WhenAll(CodeGen.AllNamedTypeSymbols.Values.Select(async (mt) => this.Equals(await mt.GetDirectAncestorAsync()) ? mt : null));
+            var results = await Task.WhenAll(TransformationContext.AllNamedTypeSymbols.Values.Select(async (mt) => this.Equals(await mt.GetDirectAncestorAsync()) ? mt : null));
             _descendents = results.Where(v => v != null).ToImmutableArray();
             return _descendents.Value;
         }
@@ -328,7 +344,7 @@ namespace CodeGeneration.Chorus
                 var constValue = GetAbstractJsonAttributeValue(ancestor.AbstractAttribute);
                 if (constValue.Kind != TypedConstantKind.Error)
                 {
-                    var expr = constValue.FormatValue();
+                    var expr = CodeGen.FormatValue(constValue);
                     var inheritedProperties = await GetInheritedPropertiesAsync();
                     var inheritedProperty = inheritedProperties.SingleOrDefault(p => p.Name == ancestor.AbstractJsonProperty);
                     var property = inheritedProperty.ArrowPropertyDeclarationSyntax(expr)
@@ -372,6 +388,20 @@ namespace CodeGeneration.Chorus
             return !(await GetDirectAncestorAsync()).IsDefault;
         }
 
+        public async Task<bool> HasChangedAsync()
+        {
+            if (DeclarationSyntax == null)
+            {
+                return false;
+            }
+            if (!OutputFilePath.Exists || File.GetLastWriteTime(SourceFilePath) > OutputFilePath.LastWriteTime)
+            {
+                return true;
+            }
+            var directAncestor = await GetDirectAncestorAsync();
+            return directAncestor == null ? false : (await directAncestor.HasChangedAsync());
+        }
+
         public bool IsAssignableFrom(ITypeSymbol type)
         {
             if (type == null)
@@ -393,16 +423,16 @@ namespace CodeGeneration.Chorus
                 {
                     var syntax = await typeSymbol.DeclaringSyntaxReferences[0].GetSyntaxAsync();
                     var inputSemanticModel = SemanticModel.Compilation.GetSemanticModel(syntax.SyntaxTree);
-                    return new MetaType(typeSymbol, syntax as BaseTypeDeclarationSyntax, inputSemanticModel);
+                    return new MetaType(typeSymbol, syntax as BaseTypeDeclarationSyntax, inputSemanticModel, TransformationContext);
                 }
-                return new MetaType(typeSymbol, null, SemanticModel);
+                return new MetaType(typeSymbol, null, SemanticModel, TransformationContext);
 
             };
             if (symbol == null)
             {
-                return new MetaType(symbol, null, SemanticModel);
+                return new MetaType(symbol, null, SemanticModel, TransformationContext);
             }
-            return CodeGen.AllNamedTypeSymbols.TryGetValue(symbol, out var result) ? result : await GetMetaTypeForSymbolAsync(symbol);
+            return TransformationContext.AllNamedTypeSymbols.TryGetValue(symbol, out var result) ? result : await GetMetaTypeForSymbolAsync(symbol);
         }
 
         private class Comparer : IEqualityComparer<MetaType>

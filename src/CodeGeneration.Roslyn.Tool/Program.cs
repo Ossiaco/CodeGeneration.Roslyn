@@ -7,7 +7,7 @@ namespace CodeGeneration.Roslyn.Generate
     using System.Collections.Generic;
     using System.IO;
     using System.Threading.Tasks;
-    using CodeGeneration.Roslyn.Engine;
+    using CodeGeneration.Chorus;
     using CodeGeneration.Roslyn.Tool.CommandLine;
     using Microsoft.CodeAnalysis;
 
@@ -64,7 +64,7 @@ namespace CodeGeneration.Roslyn.Generate
             {
                 ProjectDirectory = projectDir,
                 Compile = Sanitize(compile),
-                ReferencePath = Sanitize(refs),
+                ReferencePaths = Sanitize(refs),
                 PreprocessorSymbols = preprocessorSymbols,
                 GeneratorAssemblySearchPaths = Sanitize(generatorSearchPaths),
                 IntermediateOutputDirectory = outputDirectory,

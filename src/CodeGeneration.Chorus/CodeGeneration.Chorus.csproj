@@ -10,6 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="dotnet-codegen" />
+    <InternalsVisibleTo Include="CodeGeneration.Chorus.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\EnumerableExtensions.cs" Link="Roslyn\Utilities\EnumerableExtensions.cs" />
     <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\IReadOnlySet.cs" Link="Roslyn\Utilities\IReadOnlySet.cs" />
     <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\NullableAttributes.cs" Link="Roslyn\Utilities\NullableAttributes.cs" />
@@ -39,6 +44,9 @@
     <PackageReference Include="CG.Pluralization" Version="0.3000.12" PrivateAssets="none" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Validation" Version="15.5.31" />
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="3.0.0" />
+    <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
+    <PackageReference Include="Validation" Version="2.4.22" />
   </ItemGroup>
 
 
@@ -49,7 +57,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CodeGeneration.Chorus.Attributes\CodeGeneration.Chorus.Attributes.csproj" />
-    <ProjectReference Include="..\CodeGeneration.Roslyn\CodeGeneration.Roslyn.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition=" !$(UseRoslynSource) ">

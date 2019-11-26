@@ -50,5 +50,4 @@ namespace CodeGeneration.Chorus
         /// </summary>
         public JsonStringEnumFormat Format { get; }
     }
-
 }

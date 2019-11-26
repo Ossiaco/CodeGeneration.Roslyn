@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CodeGeneration.Roslyn.Engine\CodeGeneration.Roslyn.Engine.csproj" />
+    <ProjectReference Include="..\CodeGeneration.Chorus\CodeGeneration.Chorus.csproj" />
   </ItemGroup>
 
   <ItemGroup>
