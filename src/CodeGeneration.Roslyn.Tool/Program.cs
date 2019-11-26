@@ -63,7 +63,7 @@ namespace CodeGeneration.Roslyn.Generate
             var generator = new CompilationGenerator
             {
                 ProjectDirectory = projectDir,
-                Compile = Sanitize(compile),
+                Compile = Sanitize(projectDir, compile),
                 ReferencePaths = Sanitize(refs),
                 PreprocessorSymbols = preprocessorSymbols,
                 GeneratorAssemblySearchPaths = Sanitize(generatorSearchPaths),
@@ -99,6 +99,11 @@ namespace CodeGeneration.Roslyn.Generate
         private static void OnDiagnosticProgress(Diagnostic diagnostic)
         {
             Console.WriteLine(diagnostic.ToString());
+        }
+
+        private static IReadOnlyList<string> Sanitize(string workingDirectory, IReadOnlyList<string> inputs)
+        {
+            return inputs.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => Path.Combine(workingDirectory, x.Trim())).ToArray();
         }
 
         private static IReadOnlyList<string> Sanitize(IReadOnlyList<string> inputs)
