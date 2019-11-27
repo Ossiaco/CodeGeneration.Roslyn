@@ -89,7 +89,7 @@ namespace CodeGeneration.Chorus.Json
             {
                 innerMembers.Add(await ToJsonMethodAsync(isSealed));
             }
-
+           
             var partialClass = ClassDeclaration(this.metaType.ClassNameIdentifier)
                  .AddBaseListTypes(this.metaType.SemanticModel.AsFullyQualifiedBaseType((TypeDeclarationSyntax)this.metaType.DeclarationSyntax, metaType.TransformationContext).ToArray())
                  .WithModifiers(this.metaType.DeclarationSyntax.Modifiers)
@@ -113,12 +113,19 @@ namespace CodeGeneration.Chorus.Json
                 UsingDirective(ParseName("Chorus.Common.Text.Json")),
             });
 
-            var ns = this.metaType.DeclarationSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.WithoutTrivia();
+            var ns = this.metaType.DeclarationSyntax
+                .Ancestors()
+                .OfType<NamespaceDeclarationSyntax>()
+                .Single()
+                .Name
+                .WithoutTrivia();
+
             var members = NamespaceDeclaration(ns)
                  .WithUsings(usingsDirectives)
                  .WithMembers(outerMembers);
 
             return members;
+
         }
 
         private async Task<IEnumerable<MemberDeclarationSyntax>> JsonCtorAsync(bool hasAncestor, bool isSealed)

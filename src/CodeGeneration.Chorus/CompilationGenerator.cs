@@ -204,14 +204,23 @@ namespace CodeGeneration.Chorus
             var fileFailures = new List<Exception>();
             rootLength = ProjectDirectory.Length + 1;
             allNamedTypeSymbols = await GetAllTypeDefinitionsAsync(compilation);
-            var files = allNamedTypeSymbols.Values.GroupBy(t => t.OutputFilePath?.FullName).Where(t => t.Key != null).ToImmutableDictionary(n => n.Key, n => n.ToImmutableList());
+            var files = allNamedTypeSymbols.Values.GroupBy(t => t.OutputFilePath).Where(t => t.Key != null).ToImmutableDictionary(n => n.Key, n => n.ToImmutableList());
+
+            var directories = files.Keys.Select(v => Path.GetDirectoryName(v)).ToImmutableHashSet();
+            foreach (var directorName in directories)
+            {
+                if (!Directory.Exists(directorName))
+                {
+                    Directory.CreateDirectory(directorName);
+                }
+            }
 
             foreach (var kp in files)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    if (await TransformFileAsync(kp.Key, kp.Value, assembliesLastModified, cancellationToken))
+                    if (await TransformFileAsync(kp.Key, kp.Value, assembliesLastModified, cancellationToken).ConfigureAwait(false))
                     {
                         generatedFiles.Add(kp.Key);
                     }
@@ -247,26 +256,21 @@ namespace CodeGeneration.Chorus
             return false;
         }
 
-        private async Task<bool> TransformFileAsync(string outputFilePath, IImmutableList<MetaType> types, DateTime assembliesLastModified, CancellationToken cancellationToken = default)
+        private async Task<bool> TransformFileAsync(string outputFilePath, IImmutableList<MetaType> metaTypes, DateTime assembliesLastModified, CancellationToken cancellationToken = default)
         {
             var retriesLeft = 3;
 
-
             var lastWritten = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
-            var hasChanges = await HasChangesAsync(types) || assembliesLastModified > lastWritten;
+            var hasChanges =  assembliesLastModified > lastWritten || (await HasChangesAsync(metaTypes));
             if (hasChanges)
             {
                 var (generatedSyntaxTree, anyTypesGenerated) = await DocumentTransform
-                    .TransformAsync(this, types)
+                    .TransformAsync(this, metaTypes)
                     .ConfigureAwait(false);
                 do
                 {
                     try
                     {
-                        if (!Directory.Exists(outputFilePath))
-                        {
-                            Directory.CreateDirectory(outputFilePath);
-                        }
                         using var outputFileStream = File.OpenWrite(outputFilePath);
                         if (anyTypesGenerated)
                         {

@@ -54,19 +54,12 @@
                     {
                         switch (key.TypeKind)
                         {
-                            case TypeKind.Interface:
-                                var result = ImmutableArray<MemberDeclarationSyntax>.Empty;
+                            case TypeKind.Interface when metaType.IsJsonSerializeable:
+                                var result = ImmutableArray<MemberDeclarationSyntax>.Empty.ToBuilder();
                                 var partialImplementation = context.AllNamedTypeSymbols.Values.FirstOrDefault(m => IsPartialImplementationOfInterface(m, metaType));
-                                //var result = await GenerateDependenciesAsync(metaType, context, progress, cancellationToken).ConfigureAwait(false);
-                                result = result.Add(await CreateClassDeclarationAsync(partialImplementation).ConfigureAwait(false));
-                                //var descendents = await metaType.GetDirectDescendentsAsync();
-                                //var tasks = await Task.WhenAll(descendents.Select(to => GenerateAsync(to, context, progress, cancellationToken))).ConfigureAwait(false);
-                                //foreach (var r in tasks)
-                                //{
-                                //    result = result.AddRange(r);
-                                //}
-                                result = result.Add(await CreateJsonSerializerForinterfaceAsync());
-                                return result;
+                                result.Add(await CreateClassDeclarationAsync(partialImplementation));
+                                result.Add(await CreateJsonSerializerForinterfaceAsync());
+                                return result.ToImmutable();
                             case TypeKind.Enum:
                                 return ImmutableArray<MemberDeclarationSyntax>.Empty.Add(CreateEnumSerializerClass());
                             default:

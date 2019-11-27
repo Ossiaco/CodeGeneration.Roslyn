@@ -29,6 +29,8 @@ namespace CodeGeneration.Chorus
 // </auto-generated>
 // ------------------------------------------------------------------------------
 ".Replace("\r\n", "\n").Replace("\n", Environment.NewLine);// normalize regardless of git checkout policy
+        
+        private static string version = typeof(DocumentTransform).Assembly.GetName().Version.ToString();
 
         internal static async Task<(SyntaxTree, bool)> TransformAsync(ITransformationContext transformationContext, IEnumerable<MetaType> metaTypes)
         {
@@ -53,8 +55,6 @@ namespace CodeGeneration.Chorus
 
             var emittedAttributeLists = ImmutableArray<AttributeListSyntax>.Empty;
             var emittedMembers = ImmutableArray<MemberDeclarationSyntax>.Empty;
-
-            var version = typeof(DocumentTransform).Assembly.GetName().Version.ToString();
 
             foreach (var metaType in metaTypes)
             {

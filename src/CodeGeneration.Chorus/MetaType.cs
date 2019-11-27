@@ -85,9 +85,12 @@ namespace CodeGeneration.Chorus
 
             if (declarationSyntax != null)
             {
-                var fi = new FileInfo(Path.Combine(context.IntermediateOutputDirectory, declarationSyntax.SyntaxTree.FilePath.Substring(context.RootLength)));
-                OutputFilePath = new FileInfo(Path.Combine(fi.DirectoryName, Path.GetFileNameWithoutExtension(fi.Name) + $".generated.cs"));
+                var fi = Path.Combine(context.IntermediateOutputDirectory, declarationSyntax.SyntaxTree.FilePath.Substring(context.RootLength));
+                OutputFilePath = Path.Combine(Path.GetDirectoryName(fi), Path.GetFileNameWithoutExtension(fi) + $".generated.cs");
             }
+            
+            IsJsonSerializeable = IsAssignableFrom(TransformationContext.JsonSerializeableType);
+
         }
 
         public INamedTypeSymbol AbstractAttribute { get; }
@@ -122,13 +125,15 @@ namespace CodeGeneration.Chorus
 
         public bool IsEnumAsString { get; }
 
+        public bool IsJsonSerializeable { get; }
+
         public bool IsPartialClass => (_isPartialClass ?? (_isPartialClass = TypeSymbol.IsReferenceType && (DeclarationSyntax?.Modifiers.Any(SyntaxKind.PartialKeyword) ?? false))).Value;
 
         public JsonStringEnumFormat JsonStringEnumFormat { get; }
 
         public NameSyntax Namespace => DeclarationSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.WithoutTrivia();
 
-        public FileInfo OutputFilePath { get; }
+        public string OutputFilePath { get; }
 
         public SemanticModel SemanticModel { get; }
 
@@ -390,11 +395,11 @@ namespace CodeGeneration.Chorus
 
         public async Task<bool> HasChangedAsync()
         {
-            if (DeclarationSyntax == null)
+            if (string.IsNullOrEmpty(OutputFilePath))
             {
                 return false;
             }
-            if (!OutputFilePath.Exists || File.GetLastWriteTime(SourceFilePath) > OutputFilePath.LastWriteTime)
+            if (!File.Exists(OutputFilePath) || File.GetLastWriteTime(SourceFilePath) > File.GetLastWriteTime(OutputFilePath))
             {
                 return true;
             }
