@@ -78,10 +78,10 @@
                 var newObjectExpression = ObjectCreationExpression(classNameSyntax, ArgumentList(SingletonSeparatedList(Argument(_jsonElementParameterName))), null);
 
                 result.Add(MethodDeclaration(interfaceType, getMethodName)
-                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
-                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter })))
-                .WithExpressionBody(ArrowExpressionClause(newObjectExpression))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                    .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                    .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter })))
+                    .WithExpressionBody(ArrowExpressionClause(newObjectExpression))
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
             }
 
             InvocationExpressionSyntax callGetObject(string toCall) => InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonElementParameterName, IdentifierName(toCall))
@@ -141,7 +141,11 @@
         private static SwitchExpressionArmSyntax GetArm(MetaType descendent, INamedTypeSymbol abstractAtrribute)
         {
             var constValue = FormatValue(descendent.GetAbstractJsonAttributeValue(abstractAtrribute));
-            var newObjectExpression = ObjectCreationExpression(descendent.FullyQualifiedClassName, ArgumentList(SingletonSeparatedList(Argument(_jsonElementParameterName))), null);
+
+            var newObjectExpression = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonElementParameterName, IdentifierName($"Get{descendent.ClassNameIdentifier.Text}"))
+                                                                .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                                                                .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
             return SwitchExpressionArm(ConstantPattern(constValue), newObjectExpression);
         }
 
@@ -171,7 +175,8 @@
                     Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"Invalid {abstractMetaType.AbstractJsonProperty} specified."))))));
 
             var allDescendents = await metaType.GetResursiveDescendentsAsync();
-            var arms = allDescendents.Select(t => GetArm(t, abstractMetaType.AbstractAttribute)).ToList();
+            var validDescendents = allDescendents.Where(d => d.TypeSymbol.GetAttributes().Any(a => a.AttributeClass.Equals(abstractMetaType.AbstractAttribute)));
+            var arms = validDescendents.Select(t => GetArm(t, abstractMetaType.AbstractAttribute)).ToList();
             arms.Add(defaultThrow);
 
             return MethodDeclaration(interfaceType, getMethodName)
