@@ -88,7 +88,7 @@ namespace CodeGeneration.Chorus
                 var fi = Path.Combine(context.IntermediateOutputDirectory, declarationSyntax.SyntaxTree.FilePath.Substring(context.RootLength));
                 OutputFilePath = Path.Combine(Path.GetDirectoryName(fi), Path.GetFileNameWithoutExtension(fi) + $".generated.cs");
             }
-            
+
             IsJsonSerializeable = IsAssignableFrom(TransformationContext.JsonSerializeableType);
 
         }
@@ -373,19 +373,20 @@ namespace CodeGeneration.Chorus
             return _abstractImplementations.Value;
         }
 
-        public async Task<List<MetaType>> GetResursiveDescendentsAsync()
+        public async Task<HashSet<MetaType>> GetResursiveDescendentsAsync(HashSet<MetaType>? values = null)
         {
-            var result = new List<MetaType>();
+            values = values ?? new HashSet<MetaType>(MetaType.DefaultComparer);
             await GetPropertyOverridesAsync();
-            if (!IsAbstractType)
-            {
-                result.Add(this);
-            }
-
             var descendents = await GetDirectDescendentsAsync();
-            var arms = (await Task.WhenAll(descendents.Select(d => d.GetResursiveDescendentsAsync()))).SelectMany(a => a);
-            result.AddRange(arms);
-            return result;
+            foreach (var descendent in descendents)
+            {
+                if (!descendent.IsAbstractType)
+                {
+                    values.Add(descendent);
+                }
+                await descendent.GetResursiveDescendentsAsync(values);
+            }
+            return values;
         }
 
         public async Task<bool> HasAncestorAsync()

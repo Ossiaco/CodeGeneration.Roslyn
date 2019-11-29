@@ -32,7 +32,7 @@
             try
             {
                 const string responsFile = @"\ossiaco\dotnet\artifacts\obj\Chorus\Debug\netcoreapp3.0\Chorus.csproj.dotnet-codegen.rsp";
-                const string workingDirectory = @"\git\ossiaco\Chorus.Azure.Cosmos\src";
+                const string workingDirectory = @"\ossiaco\dotnet\src\Chorus\src";
                 await ExecuteAsync(responsFile, workingDirectory, logger);
             }
             catch (Exception e)
