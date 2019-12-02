@@ -450,9 +450,9 @@ namespace CodeGeneration.Chorus.Json
 
             private static readonly IdentifierNameSyntax UserId = IdentifierName("UserId");
 
-            private static readonly IdentifierNameSyntax _guidType = IdentifierName(typeof(Guid).FullName);
+            private static readonly IdentifierNameSyntax GuidType = IdentifierName(typeof(Guid).FullName);
 
-            private static readonly ParameterSyntax ActorIdParameterType = Parameter(ActorIdParameterName.Identifier).WithType(_guidType);
+            private static readonly ParameterSyntax ActorIdParameterType = Parameter(ActorIdParameterName.Identifier).WithType(GuidType);
 
             private static readonly ParameterSyntax CorrelatingParamType = Parameter(CorrelationParameterName.Identifier).WithType(ParseName("Chorus.Messaging.IMessage"));
 
@@ -480,7 +480,7 @@ namespace CodeGeneration.Chorus.Json
                                                                        .WithOperatorToken(Token(SyntaxKind.DotToken)))
                                                                        .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
 
-            private static readonly InvocationExpressionSyntax NewGuid = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _guidType, IdentifierName(nameof(Guid.NewGuid)))
+            private static readonly InvocationExpressionSyntax NewGuid = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, GuidType, IdentifierName(nameof(Guid.NewGuid)))
                                                                        .WithOperatorToken(Token(SyntaxKind.DotToken)))
                                                                        .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
 
