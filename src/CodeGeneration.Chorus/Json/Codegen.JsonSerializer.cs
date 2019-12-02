@@ -45,7 +45,7 @@
             var declarations = List<MemberDeclarationSyntax>();
             declarations = declarations.Add(partialClass);
             var usingsDirectives = List(new[] {
-                UsingDirective(ParseName("Chorus.Common.Text.Json")),
+                UsingDirective(ParseName("Chorus.Text.Json")),
                 UsingDirective(metaType.Namespace),
             });
 

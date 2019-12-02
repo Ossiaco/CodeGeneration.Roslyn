@@ -40,7 +40,7 @@ namespace CodeGeneration.Chorus.Json
             declarations = declarations.Add(partialClass);
             var usingsDirectives = List(new[] {
                 UsingDirective(ParseName(typeof(System.Buffers.IBufferWriter<byte>).Namespace)),
-                UsingDirective(ParseName("Chorus.Common.Text.Json")),
+                UsingDirective(ParseName("Chorus.Text.Json")),
                 UsingDirective(namespaceSyntax),
                 UsingDirective(ParseName(typeof(IEnumerable<string>).Namespace))
             });

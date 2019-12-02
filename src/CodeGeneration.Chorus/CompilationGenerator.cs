@@ -189,8 +189,8 @@ namespace CodeGeneration.Chorus
             this.progress = progress ?? new NullProgress<Diagnostic>();
             compilation = CreateCompilation(cancellationToken);
             jsonSerializeableType = compilation.GetTypeByMetadataName(typeof(IJsonSerialize).FullName);
-            responseMessageType = compilation.GetTypeByMetadataName("Chorus.Common.Messaging.IResponseMessage");
-            messageType = compilation.GetTypeByMetadataName("Chorus.Common.Messaging.IMessage");
+            responseMessageType = compilation.GetTypeByMetadataName("Chorus.Messaging.IResponseMessage");
+            messageType = compilation.GetTypeByMetadataName("Chorus.Messaging.IMessage");
             vertexType = compilation.GetTypeByMetadataName("Chorus.Azure.Cosmos.IVertex");
             intrinsicSymbols = GetIntrinsicSymbols(compilation);
 

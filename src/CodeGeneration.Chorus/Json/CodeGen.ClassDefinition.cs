@@ -110,7 +110,7 @@ namespace CodeGeneration.Chorus.Json
 
             var usingsDirectives = List(new[] {
                 UsingDirective(ParseName(typeof(System.Text.Json.JsonElement).Namespace)),
-                UsingDirective(ParseName("Chorus.Common.Text.Json")),
+                UsingDirective(ParseName("Chorus.Text.Json")),
             });
 
             var ns = this.metaType.DeclarationSyntax
@@ -276,7 +276,7 @@ namespace CodeGeneration.Chorus.Json
         {
             private static readonly IdentifierNameSyntax requestParam = IdentifierName("resquest");
             private static readonly IdentifierNameSyntax errorProperty = IdentifierName("Error");
-            private static readonly ParameterSyntax requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Common.Messaging.IRequestMessage"));
+            private static readonly ParameterSyntax requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Messaging.IRequestMessage"));
 
             private static readonly IdentifierNameSyntax requestIdParam = IdentifierName("requestId");
             private static readonly ParameterSyntax requestIdParamType = Parameter(requestIdParam.Identifier).WithType(ParseName(typeof(int).FullName));
@@ -317,7 +317,7 @@ namespace CodeGeneration.Chorus.Json
                    .WithBody(Block(localProperties.Select(p => p.PropertyAssignment)));
 
 
-                var responseError = ObjectCreationExpression(Syntax.GetTypeSyntax("Chorus.Common.Messaging", "ResponseError"))
+                var responseError = ObjectCreationExpression(Syntax.GetTypeSyntax("Chorus.Messaging", "ResponseError"))
                     .AddArgumentListArguments(Argument(exceptionParam));
 
                 var ctor2 = ConstructorDeclaration(sourceMetaType.ClassNameIdentifier)
@@ -454,7 +454,7 @@ namespace CodeGeneration.Chorus.Json
 
             private static readonly ParameterSyntax ActorIdParameterType = Parameter(ActorIdParameterName.Identifier).WithType(_guidType);
 
-            private static readonly ParameterSyntax CorrelatingParamType = Parameter(CorrelationParameterName.Identifier).WithType(ParseName("Chorus.Common.Messaging.IMessage"));
+            private static readonly ParameterSyntax CorrelatingParamType = Parameter(CorrelationParameterName.Identifier).WithType(ParseName("Chorus.IMessage"));
 
             private static readonly MemberAccessExpressionSyntax DotActorId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, TargetParameterName, Id);
 
@@ -462,7 +462,7 @@ namespace CodeGeneration.Chorus.Json
 
             private static readonly ArgumentListSyntax DirectDescendentArgumentList = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, DirectDescendentArguments));
 
-            private static readonly ParameterSyntax TargetParamType = Parameter(TargetParameterName.Identifier).WithType(ParseName("Chorus.Common.Actors.IVirtualActor"));
+            private static readonly ParameterSyntax TargetParamType = Parameter(TargetParameterName.Identifier).WithType(ParseName("Chorus.Actors.IVirtualActor"));
 
             private static IEnumerable<ArgumentSyntax> DescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(TargetParameterName), NoneToken, TargetParameterName) };
 
