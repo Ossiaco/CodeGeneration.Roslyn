@@ -454,7 +454,7 @@ namespace CodeGeneration.Chorus.Json
 
             private static readonly ParameterSyntax ActorIdParameterType = Parameter(ActorIdParameterName.Identifier).WithType(_guidType);
 
-            private static readonly ParameterSyntax CorrelatingParamType = Parameter(CorrelationParameterName.Identifier).WithType(ParseName("Chorus.IMessage"));
+            private static readonly ParameterSyntax CorrelatingParamType = Parameter(CorrelationParameterName.Identifier).WithType(ParseName("Chorus.Messaging.IMessage"));
 
             private static readonly MemberAccessExpressionSyntax DotActorId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, TargetParameterName, Id);
 
