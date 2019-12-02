@@ -142,9 +142,11 @@
         {
             var constValue = FormatValue(descendent.GetAbstractJsonAttributeValue(abstractAtrribute));
 
-            var newObjectExpression = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonElementParameterName, IdentifierName($"Get{descendent.ClassNameIdentifier.Text}"))
-                                                                .WithOperatorToken(Token(SyntaxKind.DotToken)))
-                                                                .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+            var className = IdentifierName($"{descendent.ClassNameIdentifier.Text}JsonSerializer");
+            var methodName = IdentifierName($"Get{descendent.ClassNameIdentifier.Text}");
+            var newObjectExpression = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, className, methodName)
+                                            .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                                            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(_jsonElementParameterName))));
 
             return SwitchExpressionArm(ConstantPattern(constValue), newObjectExpression);
         }
