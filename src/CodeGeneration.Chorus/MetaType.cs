@@ -344,14 +344,18 @@ namespace CodeGeneration.Chorus
                 return _abstractImplementations.Value;
             }
 
-            static async Task<bool> FindAbstractImplementationAsync(MetaType metaType, INamedTypeSymbol abstractAttribute)
+            static async Task<bool> FindAbstractImplementationAsync(MetaType probe, MetaType ancestor)
             {
-                metaType = await metaType.GetDirectAncestorAsync();
-                if (metaType?.GetAbstractJsonAttributeValue(abstractAttribute).Kind == TypedConstantKind.Error)
+                probe = await probe.GetDirectAncestorAsync();
+                if (probe.Equals(ancestor))
                 {
-                    return await FindAbstractImplementationAsync(metaType, abstractAttribute);
+                    return false;
                 }
-                return metaType != null;
+                if (probe?.GetAbstractJsonAttributeValue(ancestor.AbstractAttribute).Kind == TypedConstantKind.Error)
+                {
+                    return await FindAbstractImplementationAsync(probe, ancestor);
+                }
+                return probe != null;
             }
 
             async Task<(bool implemented, PropertyDeclarationSyntax prop)> GetAbstractPropertyAsync(MetaType ancestor)
@@ -366,7 +370,7 @@ namespace CodeGeneration.Chorus
                         .AddModifiers(SyntaxFactory.Token(SyntaxKind.OverrideKeyword));
                     return (true, property);
                 }
-                var implemented = await FindAbstractImplementationAsync(this, ancestor.AbstractAttribute);
+                var implemented = await FindAbstractImplementationAsync(this, ancestor);
                 return (implemented, null);
             }
 
