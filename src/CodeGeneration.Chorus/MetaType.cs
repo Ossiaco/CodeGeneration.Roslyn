@@ -344,7 +344,17 @@ namespace CodeGeneration.Chorus
                 return _abstractImplementations.Value;
             }
 
-            async Task<PropertyDeclarationSyntax> GetAbstractPropertyAsync(MetaType ancestor)
+            static async Task<bool> FindAbstractImplementationAsync(MetaType metaType, INamedTypeSymbol abstractAttribute)
+            {
+                metaType = await metaType.GetDirectAncestorAsync();
+                if (metaType?.GetAbstractJsonAttributeValue(abstractAttribute).Kind == TypedConstantKind.Error)
+                {
+                    return await FindAbstractImplementationAsync(metaType, abstractAttribute);
+                }
+                return metaType != null;
+            }
+
+            async Task<(bool implemented, PropertyDeclarationSyntax prop)> GetAbstractPropertyAsync(MetaType ancestor)
             {
                 var constValue = GetAbstractJsonAttributeValue(ancestor.AbstractAttribute);
                 if (constValue.Kind != TypedConstantKind.Error)
@@ -354,9 +364,10 @@ namespace CodeGeneration.Chorus
                     var inheritedProperty = inheritedProperties.SingleOrDefault(p => p.Name == ancestor.AbstractJsonProperty);
                     var property = inheritedProperty.ArrowPropertyDeclarationSyntax(expr)
                         .AddModifiers(SyntaxFactory.Token(SyntaxKind.OverrideKeyword));
-                    return property;
+                    return (true, property);
                 }
-                return null;
+                var implemented = await FindAbstractImplementationAsync(this, ancestor.AbstractAttribute);
+                return (implemented, null);
             }
 
             // Select out the fields used to serialize an abstract derived types
@@ -364,11 +375,15 @@ namespace CodeGeneration.Chorus
                 .Where(a => a.HasAbstractJsonProperty)
                 .ToImmutableArray();
 
-            _abstractImplementations = (await Task.WhenAll(inheritedMembers.Select(GetAbstractPropertyAsync)))
-                .Where(v => v != null)
+            var implementations = await Task.WhenAll(inheritedMembers.Select(GetAbstractPropertyAsync));
+            var implemented = implementations.Count(v => v.implemented == true);
+
+            _abstractImplementations = implementations
+                .Where(v => v.prop != null)
+                .Select(v => v.prop)
                 .ToImmutableArray();
 
-            IsAbstractType = HasAbstractJsonProperty || _abstractImplementations.Value.Length < inheritedMembers.Length;
+            IsAbstractType = HasAbstractJsonProperty || implemented < inheritedMembers.Length;
 
             return _abstractImplementations.Value;
         }
