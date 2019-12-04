@@ -244,11 +244,49 @@ namespace CodeGeneration.Chorus
 
         }
 
-        private static async Task<bool> HasChangesAsync(IImmutableList<MetaType> types)
+        private static async Task<bool> HasChangedAsync(IImmutableList<MetaType> types)
         {
-            foreach (var t in types)
+            static async Task<bool> HasAnyAncestorChangedAsync(MetaType metaType)
             {
-                if (await t.HasChangedAsync())
+                var hasChanged = false;
+                metaType = await metaType.GetDirectAncestorAsync();
+                if (!metaType.IsDefault)
+                {
+                    hasChanged = metaType.HasChanged();
+                    if (!hasChanged)
+                    {
+                        hasChanged = await HasAnyAncestorChangedAsync(metaType);
+                    }
+                }
+                return hasChanged;
+            }
+
+            static async Task<bool> HasAnyDescendentChangedAsync(MetaType metaType)
+            {
+                var descendendents = await metaType.GetDirectDescendentsAsync();
+                return descendendents.Any(d => d.HasChanged());
+            }
+
+            static async Task<bool> HasChangedAsync(MetaType metaType)
+            {
+                var hasChanged = metaType.HasChanged();
+                if (!hasChanged)
+                {
+                    hasChanged = await HasAnyAncestorChangedAsync(metaType);
+                    if (!hasChanged)
+                    {
+                        if (await metaType.IsAbstractTypeAsync())
+                        {
+                            hasChanged = await HasAnyDescendentChangedAsync(metaType);
+                        }
+                    }
+                }
+                return hasChanged;
+            }
+
+            foreach (var metaType in types)
+            {
+                if (await HasChangedAsync(metaType))
                 {
                     return true;
                 }
@@ -261,7 +299,7 @@ namespace CodeGeneration.Chorus
             var retriesLeft = 3;
 
             var lastWritten = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
-            var hasChanges =  assembliesLastModified > lastWritten || (await HasChangesAsync(metaTypes));
+            var hasChanges = assembliesLastModified > lastWritten || (await HasChangedAsync(metaTypes));
             if (hasChanges)
             {
                 var (generatedSyntaxTree, anyTypesGenerated) = await DocumentTransform

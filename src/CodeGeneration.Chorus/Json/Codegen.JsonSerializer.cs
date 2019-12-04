@@ -69,7 +69,7 @@
 
             var result = new List<MethodDeclarationSyntax>();
 
-            if (metaType.IsAbstractType)
+            if (await metaType.IsAbstractTypeAsync())
             {
                 result.Add(await AbstractGetObjectAsync(interfaceType, getMethodName));
             }

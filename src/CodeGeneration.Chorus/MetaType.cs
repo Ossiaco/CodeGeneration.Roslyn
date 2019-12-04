@@ -42,6 +42,10 @@ namespace CodeGeneration.Chorus
 
         private ImmutableHashSet<MetaProperty> _localProperties;
 
+        private bool? _hasChanged;
+
+        private bool? _isAbstractType;
+
         public MetaType(INamedTypeSymbol typeSymbol, BaseTypeDeclarationSyntax declarationSyntax, SemanticModel semanticModel, ITransformationContext context)
         {
             _localProperties = null;
@@ -115,8 +119,6 @@ namespace CodeGeneration.Chorus
         public bool HasAbstractJsonProperty { get; }
 
         public SyntaxToken InterfaceNameIdentifier => DeclarationSyntax.Identifier;
-
-        public bool IsAbstractType { get; private set; }
 
         public bool IsDefault
         {
@@ -387,19 +389,67 @@ namespace CodeGeneration.Chorus
                 .Select(v => v.prop)
                 .ToImmutableArray();
 
-            IsAbstractType = HasAbstractJsonProperty || implemented < inheritedMembers.Length;
+            _isAbstractType = HasAbstractJsonProperty || implemented < inheritedMembers.Length;
 
             return _abstractImplementations.Value;
         }
 
+        public async Task<bool> IsAbstractTypeAsync()
+        {
+            if (_isAbstractType != null)
+            {
+                return _isAbstractType.Value;
+            }
+
+            static async Task<bool> FindAbstractImplementationAsync(MetaType probe, MetaType ancestor)
+            {
+                probe = await probe.GetDirectAncestorAsync();
+                if (probe.Equals(ancestor))
+                {
+                    return false;
+                }
+                if (probe?.GetAbstractJsonAttributeValue(ancestor.AbstractAttribute).Kind == TypedConstantKind.Error)
+                {
+                    return await FindAbstractImplementationAsync(probe, ancestor);
+                }
+                return probe != null;
+            }
+
+            async Task<bool> GetAbstractPropertyAsync(MetaType ancestor)
+            {
+                var constValue = GetAbstractJsonAttributeValue(ancestor.AbstractAttribute);
+                if (constValue.Kind != TypedConstantKind.Error)
+                {
+                    return true;
+                }
+                return await FindAbstractImplementationAsync(this, ancestor);
+            }
+
+            async Task<bool> EvaluateAbstractTypeAsync()
+            {
+                // Select out the fields used to serialize an abstract derived types
+                var inheritedMembers = (await GetDirectAncestorsAsync())
+                    .Where(a => a.HasAbstractJsonProperty)
+                    .ToImmutableArray();
+
+                var implementations = await Task.WhenAll(inheritedMembers.Select(GetAbstractPropertyAsync));
+                var implemented = implementations.Count(v => v == true);
+
+
+                return implemented < inheritedMembers.Length;
+            }
+
+            return (_isAbstractType = HasAbstractJsonProperty || (await EvaluateAbstractTypeAsync())).Value;
+        }
+
         public async Task<HashSet<MetaType>> GetResursiveDescendentsAsync(HashSet<MetaType>? values = null)
         {
-            values = values ?? new HashSet<MetaType>(MetaType.DefaultComparer);
+            values ??= new HashSet<MetaType>(MetaType.DefaultComparer);
             await GetPropertyOverridesAsync();
             var descendents = await GetDirectDescendentsAsync();
             foreach (var descendent in descendents)
             {
-                if (!descendent.IsAbstractType)
+                if (! (await descendent.IsAbstractTypeAsync()))
                 {
                     values.Add(descendent);
                 }
@@ -408,24 +458,27 @@ namespace CodeGeneration.Chorus
             return values;
         }
 
-        public async Task<bool> HasAncestorAsync()
-        {
-            return !(await GetDirectAncestorAsync()).IsDefault;
-        }
+        public async Task<bool> HasAncestorAsync() => !(await GetDirectAncestorAsync()).IsDefault;
+        public async Task<bool> HasDescendentsAsync() => !(await GetDirectDescendentsAsync()).Any();
 
-        public async Task<bool> HasChangedAsync()
+        public bool HasChanged()
         {
-            if (string.IsNullOrEmpty(OutputFilePath))
+            bool EvaluateChanges()
             {
+                if (string.IsNullOrEmpty(OutputFilePath))
+                {
+                    return false;
+                }
+                if (!File.Exists(OutputFilePath) || File.GetLastWriteTime(SourceFilePath) > File.GetLastWriteTime(OutputFilePath))
+                {
+                    return true;
+                }
                 return false;
             }
-            if (!File.Exists(OutputFilePath) || File.GetLastWriteTime(SourceFilePath) > File.GetLastWriteTime(OutputFilePath))
-            {
-                return true;
-            }
-            var directAncestor = await GetDirectAncestorAsync();
-            return directAncestor == null ? false : (await directAncestor.HasChangedAsync());
+
+            return _hasChanged ?? (_hasChanged = EvaluateChanges()).Value;
         }
+
 
         public bool IsAssignableFrom(ITypeSymbol type)
         {

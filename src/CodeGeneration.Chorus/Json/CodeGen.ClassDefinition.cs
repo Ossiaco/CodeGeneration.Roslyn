@@ -55,8 +55,8 @@ namespace CodeGeneration.Chorus.Json
             }
 
             var abstractImplementations = await this.metaType.GetPropertyOverridesAsync();
-            var isAbstract = this.metaType.IsAbstractType;
-            var isSealed = partialImplementation?.TypeSymbol.IsSealed ?? false;
+            var isAbstract = await this.metaType.IsAbstractTypeAsync();
+            var isSealed = partialImplementation?.TypeSymbol.IsSealed ?? false || !(await this.metaType.HasDescendentsAsync());
             var localProperties = await this.metaType.GetLocalPropertiesAsync();
             var directAncestor = await this.metaType.GetDirectAncestorAsync();
 
@@ -89,7 +89,7 @@ namespace CodeGeneration.Chorus.Json
             {
                 innerMembers.Add(await ToJsonMethodAsync(isSealed));
             }
-           
+
             var partialClass = ClassDeclaration(this.metaType.ClassNameIdentifier)
                  .AddBaseListTypes(this.metaType.SemanticModel.AsFullyQualifiedBaseType((TypeDeclarationSyntax)this.metaType.DeclarationSyntax, metaType.TransformationContext).ToArray())
                  .WithModifiers(this.metaType.DeclarationSyntax.Modifiers)
@@ -178,11 +178,11 @@ namespace CodeGeneration.Chorus.Json
 
         private async Task<MemberDeclarationSyntax> MessageCtorAsync(MetaType directAncestor)
         {
-           bool isRequired(MetaProperty p) => !(
-                p.IsReadonly ||
-                p.IsAbstract ||
-                p.HasSetMethod ||
-                SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, context.MessageType));
+            bool isRequired(MetaProperty p) => !(
+                 p.IsReadonly ||
+                 p.IsAbstract ||
+                 p.HasSetMethod ||
+                 SymbolEqualityComparer.Default.Equals(p.MetaType.TypeSymbol, context.MessageType));
 
             var localProperties = (await this.metaType.GetLocalPropertiesAsync()).Where(isRequired);
             var body = Block(localProperties.Select(p => p.PropertyAssignment));
