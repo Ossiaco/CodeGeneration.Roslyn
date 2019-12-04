@@ -459,7 +459,7 @@ namespace CodeGeneration.Chorus
         }
 
         public async Task<bool> HasAncestorAsync() => !(await GetDirectAncestorAsync()).IsDefault;
-        public async Task<bool> HasDescendentsAsync() => !(await GetDirectDescendentsAsync()).Any();
+        public async Task<bool> HasDescendentsAsync() => (await GetDirectDescendentsAsync()).Length > 0;
 
         public bool HasChanged()
         {
