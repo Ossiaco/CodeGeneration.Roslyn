@@ -43,9 +43,16 @@ namespace CodeGeneration.Chorus.Json
         private TupleExpressionSyntax GetAsTuple(ImmutableHashSet<MetaProperty> properties, ExpressionSyntax expreession = null)
         {
             expreession = expreession ?? ThisExpression();
-            ArgumentSyntax WriteJsonValue(MetaProperty metaProperty) => Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, expreession, IdentifierName(metaProperty.Symbol.Name)));
 
-            return TupleExpression().AddArguments(properties.Select(WriteJsonValue).ToArray());
+            ArgumentSyntax GetTupleArgument(MetaProperty metaProperty) => Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, expreession, IdentifierName(metaProperty.Symbol.Name)));
+            var arguments = properties.Select(GetTupleArgument);
+
+            // If all the types are nullable then a literal value is added to the tuple
+            if (properties.All(p => p.IsNullable))
+            {
+                arguments = (new[] { Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))) }).Concat(arguments);
+            }
+            return TupleExpression().AddArguments(arguments.ToArray());
         }
 
         private IEnumerable<MemberDeclarationSyntax> IEquatableImplementation(ImmutableHashSet<MetaProperty> properties, MetaType ancestor)
