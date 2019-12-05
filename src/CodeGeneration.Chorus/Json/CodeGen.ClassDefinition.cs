@@ -9,6 +9,7 @@ namespace CodeGeneration.Chorus.Json
     using Microsoft.CodeAnalysis.CSharp.Syntax;
     using System;
     using System.Collections.Generic;
+    using System.Collections.Immutable;
     using System.Linq;
     using System.Threading.Tasks;
     using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -39,10 +40,160 @@ namespace CodeGeneration.Chorus.Json
             return null;
         }
 
+        private TupleExpressionSyntax GetAsTuple(ImmutableHashSet<MetaProperty> properties, ExpressionSyntax expreession = null)
+        {
+            expreession = expreession ?? ThisExpression();
+            ArgumentSyntax WriteJsonValue(MetaProperty metaProperty) => Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, expreession, IdentifierName(metaProperty.Symbol.Name)));
+
+            return TupleExpression().AddArguments(properties.Select(WriteJsonValue).ToArray());
+        }
+
+        private IEnumerable<MemberDeclarationSyntax> IEquatableImplementation(ImmutableHashSet<MetaProperty> properties, MetaType ancestor)
+        {
+            var aIdentifierName = IdentifierName("a");
+            var bIdentifierName = IdentifierName("b");
+            var baseIdentifierName = IdentifierName("base");
+            var equalsIdentifierName = IdentifierName("Equals");
+            var getHashCodeIdentifierName = IdentifierName("GetHashCode");
+
+            var ancestorType = ancestor.IsDefault ? _objectType : ancestor.TypeSyntax;
+            var interfaceType = ParseName(this.metaType.DeclarationSyntax.Identifier.ValueText);
+            var classType = ParseName(this.metaType.ClassNameIdentifier.ValueText);
+            ExpressionSyntax whenFalse = LiteralExpression(SyntaxKind.FalseLiteralExpression, Token(SyntaxKind.FalseKeyword));
+
+            ExpressionSyntax whenTrue = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName("this"), equalsIdentifierName)
+                   .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                   .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(_valueName) }))
+                       .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                       .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+            var conditionalExpression = ConditionalExpression(IsPatternExpression(_objName, DeclarationPattern(interfaceType, SingleVariableDesignation(_valueIdentifier))), whenTrue, whenFalse);
+
+            // public override bool Equals(object? obj) => obj is <interfaceType> value ? this.Equals(value) : false;
+            yield return MethodDeclaration(_boolType, _equalsIdentifier)
+                    .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.OverrideKeyword))
+                    .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _nullableObjectParameter })))
+                    .WithExpressionBody(ArrowExpressionClause(conditionalExpression))
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+            conditionalExpression = ConditionalExpression(IsPatternExpression(_otherName, DeclarationPattern(interfaceType, SingleVariableDesignation(_valueIdentifier))), whenTrue, whenFalse);
+
+            // public override bool Equals(<classType> other) => other is <interfaceType> value ? this.Equals(value) : false;
+            yield return MethodDeclaration(_boolType, _equalsIdentifier)
+                   .AddModifiers(Token(SyntaxKind.PublicKeyword))
+                   .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(_otherName.Identifier).WithType(classType) })))
+                   .WithExpressionBody(ArrowExpressionClause(conditionalExpression))
+                   .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+
+            var baseEquals = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, baseIdentifierName, equalsIdentifierName)
+                   .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                   .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(CastExpression(ancestorType, _valueName)) }))
+                       .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                       .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+            if (properties.Count > 0)
+            {
+                whenTrue = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, GetAsTuple(properties), equalsIdentifierName)
+                   .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                   .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(GetAsTuple(properties, _otherName)) }))
+                       .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                       .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+                if (!ancestor.IsDefault)
+                {
+                    whenTrue = BinaryExpression(SyntaxKind.LogicalAndExpression, baseEquals, whenTrue);
+                }
+            }
+            else if (ancestor.IsDefault)
+            {
+                whenTrue = LiteralExpression(SyntaxKind.FalseLiteralExpression, Token(SyntaxKind.TrueKeyword));
+            }
+            else
+            {
+                whenTrue = baseEquals;
+            }
+
+            conditionalExpression = ConditionalExpression(IsPatternExpression(_otherName, DeclarationPattern(interfaceType, SingleVariableDesignation(_valueIdentifier))), whenTrue, whenFalse);
+
+            // public override bool Equals(<interfaceType> other) => other is <interfaceType> value ? <tuple.Equals> : false;
+            yield return MethodDeclaration(_boolType, _equalsIdentifier)
+                   .AddModifiers(Token(SyntaxKind.PublicKeyword))
+                   .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(_otherName.Identifier).WithType(interfaceType) })))
+                   .WithExpressionBody(ArrowExpressionClause(conditionalExpression))
+                   .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+
+            whenTrue = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, GetAsTuple(properties), getHashCodeIdentifierName)
+                .WithOperatorToken(Token(SyntaxKind.DotToken)));
+
+            var baseGetHashCode = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, baseIdentifierName, getHashCodeIdentifierName)
+               .WithOperatorToken(Token(SyntaxKind.DotToken)));
+
+            if (ancestor.IsDefault || properties.Count == 0)
+            {
+                if (properties.Count == 0)
+                {
+                    whenTrue = baseGetHashCode;
+                }
+
+                // public override int GetHashCode() => <tuple>.GetHashCode();
+                yield return MethodDeclaration(_intType, _getHashCodeIdentifier)
+                       .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.OverrideKeyword))
+                       .WithExpressionBody(ArrowExpressionClause(whenTrue))
+                       .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+            }
+            else
+            {
+                var multiply = BinaryExpression(SyntaxKind.MultiplyExpression, baseGetHashCode, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(16777619)));
+                var body = CheckedStatement(SyntaxKind.UncheckedStatement, Block(ReturnStatement(BinaryExpression(SyntaxKind.AddExpression, multiply, whenTrue))));
+
+                yield return MethodDeclaration(_intType, _getHashCodeIdentifier)
+                      .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.OverrideKeyword))
+                      .WithBody(Block(body));
+            }
+
+
+            whenTrue = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, aIdentifierName, equalsIdentifierName)
+                  .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                  .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(bIdentifierName) }))
+                      .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                      .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+            conditionalExpression = ConditionalExpression(BinaryExpression(SyntaxKind.LogicalAndExpression,
+                    BinaryExpression(SyntaxKind.IsExpression, aIdentifierName, interfaceType),
+                    BinaryExpression(SyntaxKind.IsExpression, bIdentifierName, interfaceType)),
+                    whenTrue, whenFalse);
+
+            // public static bool operator ==(<classType> a, <interfaceType> b) => a is <interfaceType> && b is <interfaceType> ? a.Equals(b) : false;
+            yield return OperatorDeclaration(_boolType, Token(SyntaxKind.EqualsEqualsToken))
+               .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+               .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(aIdentifierName.Identifier).WithType(classType), Parameter(bIdentifierName.Identifier).WithType(interfaceType) })))
+               .WithExpressionBody(ArrowExpressionClause(conditionalExpression))
+               .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+
+            whenFalse = LiteralExpression(SyntaxKind.FalseLiteralExpression, Token(SyntaxKind.TrueKeyword));
+            conditionalExpression = ConditionalExpression(BinaryExpression(SyntaxKind.LogicalAndExpression,
+                    BinaryExpression(SyntaxKind.IsExpression, aIdentifierName, interfaceType),
+                    BinaryExpression(SyntaxKind.IsExpression, bIdentifierName, interfaceType)),
+                    PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, whenTrue), whenFalse);
+
+            // public static bool operator ==(<classType> a, <interfaceType> b) => a is <interfaceType> && b is <interfaceType> ? !a.Equals(b) : true;
+            yield return OperatorDeclaration(_boolType, Token(SyntaxKind.ExclamationEqualsToken))
+               .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+               .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(aIdentifierName.Identifier).WithType(classType), Parameter(bIdentifierName.Identifier).WithType(interfaceType) })))
+               .WithExpressionBody(ArrowExpressionClause(conditionalExpression))
+               .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+        }
+
         private async Task<MemberDeclarationSyntax> CreateClassDeclarationAsync(MetaType partialImplementation)
         {
             var innerMembers = new List<MemberDeclarationSyntax>();
             var hasAncestor = await this.metaType.HasAncestorAsync();
+            var properties = await this.metaType.GetLocalPropertiesAsync();
+
 
             PropertyDeclarationSyntax CreatePropertyDeclaration(MetaProperty prop)
             {
@@ -87,11 +238,13 @@ namespace CodeGeneration.Chorus.Json
             innerMembers.AddRange(localProperties.Select(CreatePropertyDeclaration));
             if (localProperties.Count > 0)
             {
-                innerMembers.Add(await ToJsonMethodAsync(isSealed));
+                innerMembers.Add(await ToJsonMethodAsync(isSealed, properties));
             }
 
+            innerMembers.AddRange(IEquatableImplementation(properties, directAncestor));
+
             var partialClass = ClassDeclaration(this.metaType.ClassNameIdentifier)
-                 .AddBaseListTypes(this.metaType.SemanticModel.AsFullyQualifiedBaseType((TypeDeclarationSyntax)this.metaType.DeclarationSyntax, metaType.TransformationContext).ToArray())
+                 .AddBaseListTypes(this.metaType.SemanticModel.AsFullyQualifiedBaseType(this.metaType).ToArray())
                  .WithModifiers(this.metaType.DeclarationSyntax.Modifiers)
                  .WithMembers(List(innerMembers));
 
@@ -374,7 +527,7 @@ namespace CodeGeneration.Chorus.Json
         }
 
 
-        private async Task<MethodDeclarationSyntax> ToJsonMethodAsync(bool isSealed)
+        private async Task<MethodDeclarationSyntax> ToJsonMethodAsync(bool isSealed, ImmutableHashSet<MetaProperty> properties)
         {
 
             static InvocationExpressionSyntax WriteJsonValue(MetaProperty metaProperty)
@@ -382,7 +535,7 @@ namespace CodeGeneration.Chorus.Json
                 var nullable = metaProperty.IsNullable ? "Safe" : "";
                 var array = metaProperty.IsCollection ? "Array" : "";
                 var typeName = metaProperty.JsonTypeName;
-                return InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonWriterParameterName, IdentifierName($"{nullable}Write{typeName}{array}"))
+                return InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _writerName, IdentifierName($"{nullable}Write{typeName}{array}"))
                            .WithOperatorToken(Token(SyntaxKind.DotToken)))
                            .WithArgumentList(
                                ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken,
@@ -400,7 +553,6 @@ namespace CodeGeneration.Chorus.Json
                 return !prop.IsIgnored;
             }
 
-            var properties = await this.metaType.GetLocalPropertiesAsync();
             var body = new List<ExpressionStatementSyntax>();
 
             var hasAncestor = await this.metaType.HasAncestorAsync();
@@ -409,7 +561,7 @@ namespace CodeGeneration.Chorus.Json
                 var ancestor = await this.metaType.GetDirectAncestorAsync();
                 var callAncestor = InvocationExpression(Syntax.BaseDot(IdentifierName($"ToJson"))
                            .WithOperatorToken(Token(SyntaxKind.DotToken)))
-                           .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(_jsonWriterParameterName)))
+                           .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(_writerName)))
                                .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
                                .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
                 body.Add(ExpressionStatement(callAncestor));
@@ -417,7 +569,7 @@ namespace CodeGeneration.Chorus.Json
 
             body.AddRange(properties.Where(IsRequired).Select(f => ExpressionStatement(WriteJsonValue(f))));
 
-            var result = MethodDeclaration(_voidTypeSyntax, Identifier("ToJson"))
+            var result = MethodDeclaration(_voidType, Identifier("ToJson"))
                 .AddModifiers(Token(SyntaxKind.PublicKeyword));
 
             if (hasAncestor)

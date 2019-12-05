@@ -42,8 +42,10 @@ namespace CodeGeneration.Chorus
             yield return SimpleBaseType(ParseName(value.Identifier.ValueText));
         }
 
-        internal static IEnumerable<BaseTypeSyntax> AsFullyQualifiedBaseType(this SemanticModel model, TypeDeclarationSyntax value, ITransformationContext context)
+        internal static IEnumerable<BaseTypeSyntax> AsFullyQualifiedBaseType(this SemanticModel model, MetaType metaType)
         {
+            var value = (TypeDeclarationSyntax)metaType.DeclarationSyntax;
+            var context = metaType.TransformationContext;
             if (value.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
                 var typeSymbol = ((INamedTypeSymbol)model.GetTypeInfo(nameSyntax).Type);
@@ -54,7 +56,13 @@ namespace CodeGeneration.Chorus
                     yield return SimpleBaseType(typeSyntax);
                 }
             }
-            yield return SimpleBaseType(ParseName(value.Identifier.ValueText));
+            var interfaceType = (TypeSyntax)ParseName(value.Identifier.ValueText);
+            var classType = (TypeSyntax)ParseName(metaType.ClassNameIdentifier.ValueText);
+            var IEquatableType = Identifier("System.IEquatable");
+
+            yield return SimpleBaseType(interfaceType);
+            yield return SimpleBaseType(GenericName(IEquatableType, TypeArgumentList(SingletonSeparatedList(interfaceType))));
+            yield return SimpleBaseType(GenericName(IEquatableType, TypeArgumentList(SingletonSeparatedList(classType))));
         }
 
         internal static MemberAccessExpressionSyntax BaseDot(SimpleNameSyntax memberAccess)

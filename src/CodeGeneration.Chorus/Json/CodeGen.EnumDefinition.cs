@@ -53,20 +53,20 @@ namespace CodeGeneration.Chorus.Json
         private static InvocationExpressionSyntax GetEnum(string toCall, IdentifierNameSyntax className)
         {
             MemberAccessExpressionSyntax member(string toCall)
-               => MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonElementParameterName, GenericName(toCall).AddTypeArgumentListArguments(className));
+               => MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _elementName, GenericName(toCall).AddTypeArgumentListArguments(className));
 
             return InvocationExpression(member(toCall)
                .WithOperatorToken(Token(SyntaxKind.DotToken)))
-               .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(_propertyNameParameterName) }))
+               .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(_propertyNameName) }))
                    .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
                    .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
         }
 
         private static InvocationExpressionSyntax WriteEnum(string toCall, IdentifierNameSyntax className)
         {
-            return InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonWriterParameterName, IdentifierName(toCall))
+            return InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _writerName, IdentifierName(toCall))
                .WithOperatorToken(Token(SyntaxKind.DotToken)))
-               .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(_propertyNameParameterName), Argument(_valueParameterName) }))
+               .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(_propertyNameName), Argument(_valueName) }))
                    .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
                    .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
         }
@@ -74,7 +74,7 @@ namespace CodeGeneration.Chorus.Json
         private static InvocationExpressionSyntax GetEnumValue(string toCall, IdentifierNameSyntax className)
         {
             MemberAccessExpressionSyntax member(string toCall)
-               => MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _jsonElementParameterName, GenericName(toCall).AddTypeArgumentListArguments(className));
+               => MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _elementName, GenericName(toCall).AddTypeArgumentListArguments(className));
 
             return InvocationExpression(member(toCall)
                .WithOperatorToken(Token(SyntaxKind.DotToken)))
@@ -139,16 +139,16 @@ namespace CodeGeneration.Chorus.Json
             var writeMethodName = Identifier($"Write{metaType.ClassNameIdentifier.Text}");
             var safeWriteMethodName = Identifier($"SafeWrite{metaType.ClassNameIdentifier.Text}");
             var classNameSyntax = metaType.ClassName;
-            var valueParameter = Parameter(_valueParameterName.Identifier).WithType(identifierSyntax);
-            var nullableValueParameter = Parameter(_valueParameterName.Identifier).WithType(NullableType(identifierSyntax));
+            var valueParameter = Parameter(_valueName.Identifier).WithType(identifierSyntax);
+            var nullableValueParameter = Parameter(_valueName.Identifier).WithType(NullableType(identifierSyntax));
 
-            yield return MethodDeclaration(_voidTypeSyntax, writeMethodName)
+            yield return MethodDeclaration(_voidType, writeMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter, _propertyNameParameter, valueParameter })))
                 .WithExpressionBody(ArrowExpressionClause(WriteEnum(methodToCall, classNameSyntax)))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
-            yield return MethodDeclaration(_voidTypeSyntax, safeWriteMethodName)
+            yield return MethodDeclaration(_voidType, safeWriteMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter, _propertyNameParameter, nullableValueParameter })))
                 .WithExpressionBody(ArrowExpressionClause(WriteEnum($"Safe{methodToCall}", classNameSyntax)))
