@@ -161,35 +161,45 @@ namespace CodeGeneration.Chorus.Json
             }
 
 
+            // a.Equals(b)
             whenTrue = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, aIdentifierName, equalsIdentifierName)
                   .WithOperatorToken(Token(SyntaxKind.DotToken)))
                   .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(bIdentifierName) }))
                       .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
                       .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
 
+            // object.Equals(a, b)
+            whenFalse = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _objectType, equalsIdentifierName)
+                   .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                   .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(aIdentifierName), Argument(bIdentifierName) }))
+                       .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
+                       .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+            // a is <interface> && b is <interface> ? !a.Equals(b) : !object.Equals(a, b)
             conditionalExpression = ConditionalExpression(BinaryExpression(SyntaxKind.LogicalAndExpression,
                     BinaryExpression(SyntaxKind.IsExpression, aIdentifierName, interfaceType),
                     BinaryExpression(SyntaxKind.IsExpression, bIdentifierName, interfaceType)),
                     whenTrue, whenFalse);
 
-            // public static bool operator ==(<classType> a, <interfaceType> b) => a is <interfaceType> && b is <interfaceType> ? a.Equals(b) : false;
+            // public static bool operator ==(<classType>? a, <interfaceType>? b) => a is <interfaceType> && b is <interfaceType> ? a.Equals(b) : object.Equals(a, b);
             yield return OperatorDeclaration(_boolType, Token(SyntaxKind.EqualsEqualsToken))
                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
-               .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(aIdentifierName.Identifier).WithType(classType), Parameter(bIdentifierName.Identifier).WithType(interfaceType) })))
+               .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(aIdentifierName.Identifier).WithType(NullableType(classType)), Parameter(bIdentifierName.Identifier).WithType(NullableType(interfaceType)) })))
                .WithExpressionBody(ArrowExpressionClause(conditionalExpression))
                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
 
-            whenFalse = LiteralExpression(SyntaxKind.FalseLiteralExpression, Token(SyntaxKind.TrueKeyword));
+            whenTrue = PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, whenTrue);
+            whenFalse = PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, whenFalse);
             conditionalExpression = ConditionalExpression(BinaryExpression(SyntaxKind.LogicalAndExpression,
                     BinaryExpression(SyntaxKind.IsExpression, aIdentifierName, interfaceType),
                     BinaryExpression(SyntaxKind.IsExpression, bIdentifierName, interfaceType)),
-                    PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, whenTrue), whenFalse);
+                    whenTrue, whenFalse);
 
-            // public static bool operator ==(<classType> a, <interfaceType> b) => a is <interfaceType> && b is <interfaceType> ? !a.Equals(b) : true;
+            // public static bool operator ==(<classType>? a, <interfaceType>? b) => a is <interfaceType> && b is <interfaceType> ? !a.Equals(b) : !object.Equals(a, b);
             yield return OperatorDeclaration(_boolType, Token(SyntaxKind.ExclamationEqualsToken))
                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
-               .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(aIdentifierName.Identifier).WithType(classType), Parameter(bIdentifierName.Identifier).WithType(interfaceType) })))
+               .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(aIdentifierName.Identifier).WithType(NullableType(classType)), Parameter(bIdentifierName.Identifier).WithType(NullableType(interfaceType)) })))
                .WithExpressionBody(ArrowExpressionClause(conditionalExpression))
                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
