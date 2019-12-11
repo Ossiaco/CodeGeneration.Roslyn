@@ -615,7 +615,7 @@ namespace CodeGeneration.Chorus.Json
 
             private static readonly IdentifierNameSyntax PostedTime = IdentifierName("PostedTime");
 
-            private static readonly IdentifierNameSyntax TargetParameterName = IdentifierName("target");
+            // private static readonly IdentifierNameSyntax TargetParameterName = IdentifierName("target");
 
             private static readonly IdentifierNameSyntax UserId = IdentifierName("UserId");
 
@@ -625,19 +625,27 @@ namespace CodeGeneration.Chorus.Json
 
             private static readonly ParameterSyntax CorrelatingParamType = Parameter(CorrelationParameterName.Identifier).WithType(ParseName("Chorus.Messaging.IMessage"));
 
-            private static readonly MemberAccessExpressionSyntax DotActorId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, TargetParameterName, Id);
+            // private static readonly MemberAccessExpressionSyntax DotActorId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, TargetParameterName, Id);
 
-            private static IEnumerable<ArgumentSyntax> DirectDescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(ActorIdParameterName), NoneToken, DotActorId) };
+            //private static IEnumerable<ArgumentSyntax> DirectDescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(ActorIdParameterName), NoneToken, DotActorId) };
+            
+            private static IEnumerable<ArgumentSyntax> DirectDescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(ActorIdParameterName), NoneToken, ActorIdParameterName) };
+
+            // private static readonly ArgumentListSyntax DirectDescendentArgumentList = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, DirectDescendentArguments));
 
             private static readonly ArgumentListSyntax DirectDescendentArgumentList = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, DirectDescendentArguments));
 
-            private static readonly ParameterSyntax TargetParamType = Parameter(TargetParameterName.Identifier).WithType(ParseName("Chorus.Actors.IVirtualActor"));
+            // private static readonly ParameterSyntax TargetParamType = Parameter(TargetParameterName.Identifier).WithType(ParseName("Chorus.Actors.IVirtualActor"));
 
-            private static IEnumerable<ArgumentSyntax> DescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(TargetParameterName), NoneToken, TargetParameterName) };
+            // private static IEnumerable<ArgumentSyntax> DescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(TargetParameterName), NoneToken, TargetParameterName) };
 
-            private static readonly ArgumentListSyntax DescendentArgumentList = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, DescendentArguments));
+            private static IEnumerable<ArgumentSyntax> DescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(ActorIdParameterName), NoneToken, ActorIdParameterName) };
 
-            public static readonly IEnumerable<ParameterSyntax> DefaultParameters = new[] { CorrelatingParamType, TargetParamType };
+            // private static readonly ArgumentListSyntax DescendentArgumentList = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, DescendentArguments));
+
+            // public static readonly IEnumerable<ParameterSyntax> DefaultParameters = new[] { CorrelatingParamType, TargetParamType };
+            
+            public static readonly IEnumerable<ParameterSyntax> DefaultParameters = new[] { CorrelatingParamType, ActorIdParameterType };
 
             private static readonly MemberAccessExpressionSyntax DotId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, CorrelationParameterName, Id);
 
@@ -653,6 +661,8 @@ namespace CodeGeneration.Chorus.Json
                                                                        .WithOperatorToken(Token(SyntaxKind.DotToken)))
                                                                        .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
 
+            private static readonly IEnumerable<ParameterSyntax> BaseParameters = new[] { CorrelatingParamType, ActorIdParameterType };
+
             public static ConstructorInitializerSyntax DirectDescendentConstructorInitializer = SyntaxFactory.ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, DirectDescendentArgumentList);
 
             public static ConstructorInitializerSyntax ConstructorInitializer(IEnumerable<MetaProperty> properties)
@@ -663,7 +673,6 @@ namespace CodeGeneration.Chorus.Json
                 return SyntaxFactory.ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, arguments);
 
             }
-            private static readonly IEnumerable<ParameterSyntax> BaseParameters = new[] { CorrelatingParamType, ActorIdParameterType };
 
             private static readonly IEnumerable<ExpressionStatementSyntax> ParameterAssignment = new[]
             {
