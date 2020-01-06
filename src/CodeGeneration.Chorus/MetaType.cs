@@ -129,6 +129,8 @@ namespace CodeGeneration.Chorus
 
         public bool IsJsonSerializeable { get; }
 
+        public bool IsGenericType => TypeSymbol.IsGenericType;
+
         public bool IsPartialClass => (_isPartialClass ?? (_isPartialClass = TypeSymbol.IsReferenceType && (DeclarationSyntax?.Modifiers.Any(SyntaxKind.PartialKeyword) ?? false))).Value;
 
         public JsonStringEnumFormat JsonStringEnumFormat { get; }
