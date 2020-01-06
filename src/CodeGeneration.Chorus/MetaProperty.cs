@@ -64,6 +64,7 @@ namespace CodeGeneration.Chorus
         public bool IsJsonSerializeable { get; }
 
         public bool IsNullable => Symbol.IsPropertyNullable();
+
         public bool IsOptional => Symbol.IsPropertyNullable() || Symbol.Name == "PartitionKey";
 
         public bool IsReadonly => Symbol == null || Symbol.IsPropertyReadonly();
@@ -80,7 +81,12 @@ namespace CodeGeneration.Chorus
         {
             get
             {
-                return IdentifierName(Symbol.Name.ToCamelCase());
+                var name = Symbol.Name.ToCamelCase();
+                if (SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None || SyntaxFacts.GetContextualKeywordKind(name) != SyntaxKind.None)
+                {
+                    name = $"@{name}";
+                }
+                return IdentifierName(name);
             }
         }
 
