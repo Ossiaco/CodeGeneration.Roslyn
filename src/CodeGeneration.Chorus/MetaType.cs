@@ -4,10 +4,6 @@
 
 namespace CodeGeneration.Chorus
 {
-    using CodeGeneration.Chorus.Json;
-    using Microsoft.CodeAnalysis;
-    using Microsoft.CodeAnalysis.CSharp;
-    using Microsoft.CodeAnalysis.CSharp.Syntax;
     using System.Collections;
     using System.Collections.Generic;
     using System.Collections.Immutable;
@@ -15,7 +11,10 @@ namespace CodeGeneration.Chorus
     using System.IO;
     using System.Linq;
     using System.Threading.Tasks;
-
+    using CodeGeneration.Chorus.Json;
+    using Microsoft.CodeAnalysis;
+    using Microsoft.CodeAnalysis.CSharp;
+    using Microsoft.CodeAnalysis.CSharp.Syntax;
 
     [DebuggerDisplay("{TypeSymbol?.Name}")]
     internal class MetaType
@@ -23,28 +22,17 @@ namespace CodeGeneration.Chorus
         public static IEqualityComparer<MetaType> DefaultComparer = new Comparer();
 
         private ImmutableArray<PropertyDeclarationSyntax>? _abstractImplementations;
-
         private ImmutableArray<MetaType>? _allInterfaces;
-
         private ImmutableHashSet<MetaProperty> _allProperties;
-
         private ImmutableArray<MetaType>? _ancestors;
-
         private ImmutableArray<MetaType>? _descendents;
-
         private MetaType? _directAncestor;
-
         private ImmutableArray<MetaType>? _explicitInterfaces;
-
-        private ImmutableHashSet<MetaProperty> _inheritedProperties;
-
-        private bool? _isPartialClass;
-
-        private ImmutableHashSet<MetaProperty> _localProperties;
-
         private bool? _hasChanged;
-
+        private ImmutableHashSet<MetaProperty> _inheritedProperties;
         private bool? _isAbstractType;
+        private bool? _isPartialClass;
+        private ImmutableHashSet<MetaProperty> _localProperties;
 
         public MetaType(INamedTypeSymbol typeSymbol, BaseTypeDeclarationSyntax declarationSyntax, SemanticModel semanticModel, ITransformationContext context)
         {
@@ -127,9 +115,9 @@ namespace CodeGeneration.Chorus
 
         public bool IsEnumAsString { get; }
 
-        public bool IsJsonSerializeable { get; }
-
         public bool IsGenericType => TypeSymbol.IsGenericType;
+
+        public bool IsJsonSerializeable { get; }
 
         public bool IsPartialClass => (_isPartialClass ?? (_isPartialClass = TypeSymbol.IsReferenceType && (DeclarationSyntax?.Modifiers.Any(SyntaxKind.PartialKeyword) ?? false))).Value;
 
@@ -396,6 +384,41 @@ namespace CodeGeneration.Chorus
             return _abstractImplementations.Value;
         }
 
+        public async Task<HashSet<MetaType>> GetRecursiveDescendentsAsync(HashSet<MetaType>? values = null)
+        {
+            values ??= new HashSet<MetaType>(MetaType.DefaultComparer);
+            await GetPropertyOverridesAsync();
+            var descendents = await GetDirectDescendentsAsync();
+            foreach (var descendent in descendents)
+            {
+                values.Add(descendent);
+                await descendent.GetRecursiveDescendentsAsync(values);
+            }
+            return values;
+        }
+
+        public async Task<bool> HasAncestorAsync() => !(await GetDirectAncestorAsync()).IsDefault;
+
+        public bool HasChanged()
+        {
+            bool EvaluateChanges()
+            {
+                if (string.IsNullOrEmpty(OutputFilePath))
+                {
+                    return false;
+                }
+                if (!File.Exists(OutputFilePath) || File.GetLastWriteTime(SourceFilePath) > File.GetLastWriteTime(OutputFilePath))
+                {
+                    return true;
+                }
+                return false;
+            }
+
+            return _hasChanged ?? (_hasChanged = EvaluateChanges()).Value;
+        }
+
+        public async Task<bool> HasDescendentsAsync() => (await GetDirectDescendentsAsync()).Length > 0;
+
         public async Task<bool> IsAbstractTypeAsync()
         {
             if (_isAbstractType != null)
@@ -444,44 +467,6 @@ namespace CodeGeneration.Chorus
             return (_isAbstractType = HasAbstractJsonProperty || (await EvaluateAbstractTypeAsync())).Value;
         }
 
-        public async Task<HashSet<MetaType>> GetResursiveDescendentsAsync(HashSet<MetaType>? values = null)
-        {
-            values ??= new HashSet<MetaType>(MetaType.DefaultComparer);
-            await GetPropertyOverridesAsync();
-            var descendents = await GetDirectDescendentsAsync();
-            foreach (var descendent in descendents)
-            {
-                if (! (await descendent.IsAbstractTypeAsync()))
-                {
-                    values.Add(descendent);
-                }
-                await descendent.GetResursiveDescendentsAsync(values);
-            }
-            return values;
-        }
-
-        public async Task<bool> HasAncestorAsync() => !(await GetDirectAncestorAsync()).IsDefault;
-        public async Task<bool> HasDescendentsAsync() => (await GetDirectDescendentsAsync()).Length > 0;
-
-        public bool HasChanged()
-        {
-            bool EvaluateChanges()
-            {
-                if (string.IsNullOrEmpty(OutputFilePath))
-                {
-                    return false;
-                }
-                if (!File.Exists(OutputFilePath) || File.GetLastWriteTime(SourceFilePath) > File.GetLastWriteTime(OutputFilePath))
-                {
-                    return true;
-                }
-                return false;
-            }
-
-            return _hasChanged ?? (_hasChanged = EvaluateChanges()).Value;
-        }
-
-
         public bool IsAssignableFrom(ITypeSymbol type)
         {
             if (type == null)
@@ -526,36 +511,6 @@ namespace CodeGeneration.Chorus
             {
                 return obj.TypeSymbol?.GetHashCode() ?? 0;
             }
-        }
-
-        private class EmptyMetaPropertyGeneration : IGrouping<int, MetaProperty>
-        {
-            internal static readonly IGrouping<int, MetaProperty> Default = new EmptyMetaPropertyGeneration();
-
-            private EmptyMetaPropertyGeneration()
-            {
-            }
-
-            public int Key { get; }
-
-            public IEnumerator<MetaProperty> GetEnumerator() => Enumerable.Empty<MetaProperty>().GetEnumerator();
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        }
-
-        private class EmptyMetaTypeGeneration : IGrouping<int, MetaType>
-        {
-            internal static readonly IGrouping<int, MetaType> Default = new EmptyMetaTypeGeneration();
-
-            private EmptyMetaTypeGeneration()
-            {
-            }
-
-            public int Key { get; }
-
-            public IEnumerator<MetaType> GetEnumerator() => Enumerable.Empty<MetaType>().GetEnumerator();
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
     }
 }
