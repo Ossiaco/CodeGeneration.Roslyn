@@ -25,11 +25,11 @@ namespace CodeGeneration.Chorus
 
     internal interface ITransformationContext
     {
-        string IntermediateOutputDirectory { get; }
-
         ImmutableDictionary<INamedTypeSymbol, MetaType> AllNamedTypeSymbols { get; }
 
         CSharpCompilation Compilation { get; }
+
+        string IntermediateOutputDirectory { get; }
 
         ImmutableHashSet<INamedTypeSymbol> IntrinsicSymbols { get; }
 
@@ -44,7 +44,6 @@ namespace CodeGeneration.Chorus
         int RootLength { get; }
 
         INamedTypeSymbol VertexType { get; }
-
     }
 
     /// <summary>
@@ -57,39 +56,22 @@ namespace CodeGeneration.Chorus
         private const int ProcessCannotAccessFileHR = unchecked((int)0x80070020);
 
         private static readonly HashSet<string> AllowedAssemblyExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".dll" };
-
         private readonly List<string> additionalWrittenFiles = new List<string>();
-
         private readonly Dictionary<string, Assembly> assembliesByPath = new Dictionary<string, Assembly>();
-
         private readonly HashSet<string> directoriesWithResolver = new HashSet<string>();
-
-        private ImmutableHashSet<string> generatedFiles = ImmutableHashSet<string>.Empty;
-
         private readonly List<string> loadedAssemblies = new List<string>();
-
-        private CompositeCompilationAssemblyResolver assemblyResolver;
-
-        private DependencyContext dependencyContext;
-
         private ImmutableDictionary<INamedTypeSymbol, MetaType> allNamedTypeSymbols;
-
+        private CompositeCompilationAssemblyResolver assemblyResolver;
         private CSharpCompilation compilation;
-
+        private DependencyContext dependencyContext;
+        private ImmutableHashSet<string> generatedFiles = ImmutableHashSet<string>.Empty;
         private ImmutableHashSet<INamedTypeSymbol> intrinsicSymbols;
-
         private INamedTypeSymbol jsonSerializeableType;
-
         private INamedTypeSymbol messageType;
-
         private IProgress<Diagnostic> progress;
-
         private INamedTypeSymbol responseMessageType;
-
         private int rootLength;
-
         private INamedTypeSymbol vertexType;
-
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CompilationGenerator"/> class.
@@ -106,6 +88,26 @@ namespace CodeGeneration.Chorus
             var loadContext = AssemblyLoadContext.GetLoadContext(GetType().GetTypeInfo().Assembly);
             loadContext.Resolving += ResolveAssembly;
         }
+
+        ImmutableDictionary<INamedTypeSymbol, MetaType> ITransformationContext.AllNamedTypeSymbols => this.allNamedTypeSymbols;
+
+        CSharpCompilation ITransformationContext.Compilation => this.compilation;
+
+        string ITransformationContext.IntermediateOutputDirectory => this.IntermediateOutputDirectory;
+
+        ImmutableHashSet<INamedTypeSymbol> ITransformationContext.IntrinsicSymbols => this.intrinsicSymbols;
+
+        INamedTypeSymbol ITransformationContext.JsonSerializeableType => this.jsonSerializeableType;
+
+        INamedTypeSymbol ITransformationContext.MessageType => this.messageType;
+
+        IProgress<Diagnostic> ITransformationContext.Progress => this.progress;
+
+        INamedTypeSymbol ITransformationContext.ResponseMessageType => this.responseMessageType;
+
+        int ITransformationContext.RootLength => this.rootLength;
+
+        INamedTypeSymbol ITransformationContext.VertexType => this.vertexType;
 
         /// <summary>
         /// Gets the AdditionalWrittenFiles
@@ -151,26 +153,6 @@ namespace CodeGeneration.Chorus
         /// Gets or sets the ReferencePath
         /// </summary>
         public IReadOnlyList<string> ReferencePaths { get; set; }
-
-        string ITransformationContext.IntermediateOutputDirectory => this.IntermediateOutputDirectory;
-
-        ImmutableDictionary<INamedTypeSymbol, MetaType> ITransformationContext.AllNamedTypeSymbols => this.allNamedTypeSymbols;
-
-        CSharpCompilation ITransformationContext.Compilation => this.compilation;
-
-        ImmutableHashSet<INamedTypeSymbol> ITransformationContext.IntrinsicSymbols => this.intrinsicSymbols;
-
-        INamedTypeSymbol ITransformationContext.JsonSerializeableType => this.jsonSerializeableType;
-
-        INamedTypeSymbol ITransformationContext.MessageType => this.messageType;
-
-        IProgress<Diagnostic> ITransformationContext.Progress => this.progress;
-
-        INamedTypeSymbol ITransformationContext.ResponseMessageType => this.responseMessageType;
-
-        int ITransformationContext.RootLength => this.rootLength;
-
-        INamedTypeSymbol ITransformationContext.VertexType => this.vertexType;
 
         /// <summary>
         /// The GenerateAsync
@@ -244,7 +226,127 @@ namespace CodeGeneration.Chorus
 
         }
 
-        private static async Task<bool> HasChangedAsync(IImmutableList<MetaType> types)
+        private static RuntimeLibrary FindMatchingLibrary(IEnumerable<RuntimeLibrary> libraries, AssemblyName name)
+        {
+            foreach (var runtime in libraries)
+            {
+                if (string.Equals(runtime.Name, name.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return runtime;
+                }
+
+                // If the NuGet package name does not exactly match the AssemblyName,
+                // we check whether the assembly file name is matching
+                if (runtime.RuntimeAssemblyGroups.Any(
+                        g => g.AssetPaths.Any(
+                            p => string.Equals(Path.GetFileNameWithoutExtension(p), name.Name, StringComparison.OrdinalIgnoreCase))))
+                {
+                    return runtime;
+                }
+            }
+            return null;
+        }
+
+        private static ImmutableHashSet<INamedTypeSymbol> GetIntrinsicSymbols(CSharpCompilation compilation)
+        {
+            var types = new[] { typeof(byte),
+                typeof(short), typeof(ushort),
+                typeof(int), typeof(uint),
+                typeof(long), typeof(ulong),
+                typeof(decimal), typeof(double), typeof(float),
+                typeof(string), typeof(Guid), typeof(Uri),
+                typeof(DateTimeOffset)
+            };
+            var values = types.Select(t => compilation.GetTypeByMetadataName(t.FullName)).ToList();
+            return values.ToImmutableHashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        }
+
+        private static DateTime GetLastModifiedAssemblyTime(string assemblyListPath)
+        {
+            if (!File.Exists(assemblyListPath))
+            {
+                return DateTime.MinValue;
+            }
+
+            var timestamps = (from path in File.ReadAllLines(assemblyListPath)
+                              where File.Exists(path)
+                              select File.GetLastWriteTime(path)).ToList();
+            return timestamps.Any() ? timestamps.Max() : DateTime.MinValue;
+        }
+
+        private static void ReportError(IProgress<Diagnostic> progress, string id, SyntaxTree inputSyntaxTree, Exception ex)
+        {
+            Console.Error.WriteLine($"Exception in file processing: {ex}");
+
+            if (progress == null)
+            {
+                return;
+            }
+
+            const string category = "CodeGen.Roslyn: Transformation";
+            const string messageFormat = "{0}";
+
+            var descriptor = new DiagnosticDescriptor(
+                id,
+                "Error during transformation",
+                messageFormat,
+                category,
+                DiagnosticSeverity.Error,
+                true);
+
+            var location = inputSyntaxTree != null ? Location.Create(inputSyntaxTree, TextSpan.FromBounds(0, 0)) : Location.None;
+
+            var messageArgs = new object[]
+            {
+                ex.Message,
+            };
+
+            var reportDiagnostic = Diagnostic.Create(descriptor, location, messageArgs);
+
+            progress.Report(reportDiagnostic);
+        }
+
+        private CSharpCompilation CreateCompilation(CancellationToken cancellationToken)
+        {
+            var compilation = CSharpCompilation.Create("codegen")
+                .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+                .WithReferences(ReferencePaths.Select(p => MetadataReference.CreateFromFile(p)));
+            var parseOptions = new CSharpParseOptions(preprocessorSymbols: PreprocessorSymbols);
+
+            foreach (var sourceFile in Compile)
+            {
+                using (var stream = File.OpenRead(sourceFile))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var text = SourceText.From(stream);
+                    compilation = compilation.AddSyntaxTrees(
+                        CSharpSyntaxTree.ParseText(
+                            text,
+                            parseOptions,
+                            sourceFile,
+                            cancellationToken));
+                }
+            }
+
+            return compilation;
+        }
+
+        private async Task<ImmutableDictionary<INamedTypeSymbol, MetaType>> GetAllTypeDefinitionsAsync(CSharpCompilation compilation)
+        {
+            var result = new ConcurrentDictionary<INamedTypeSymbol, MetaType>(SymbolEqualityComparer.Default);
+
+            async Task TryAdd(INamedTypeSymbol typeSymbol)
+            {
+                var syntax = await typeSymbol.DeclaringSyntaxReferences[0].GetSyntaxAsync();
+                var inputSemanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
+                result.TryAdd(typeSymbol, new MetaType(typeSymbol, syntax as BaseTypeDeclarationSyntax, inputSemanticModel, this));
+            }
+
+            await Task.WhenAll(GetAllTypeSymbolsVisitor.Execute(compilation).Select(TryAdd));
+            return result.ToImmutableDictionary(SymbolEqualityComparer.Default);
+        }
+
+        private async Task<bool> HasChangedAsync(IImmutableList<MetaType> types)
         {
             static async Task<bool> HasAnyAncestorChangedAsync(MetaType metaType)
             {
@@ -286,174 +388,19 @@ namespace CodeGeneration.Chorus
 
             foreach (var metaType in types)
             {
-                if (await HasChangedAsync(metaType))
+                try
                 {
-                    return true;
+                    if (await HasChangedAsync(metaType))
+                    {
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ReportError(this.progress, "CGR004", metaType.DeclarationSyntax.SyntaxTree, ex);
                 }
             }
             return false;
-        }
-
-        private async Task<bool> TransformFileAsync(string outputFilePath, IImmutableList<MetaType> metaTypes, DateTime assembliesLastModified, CancellationToken cancellationToken = default)
-        {
-            var retriesLeft = 3;
-
-            var lastWritten = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
-            var hasChanges = assembliesLastModified > lastWritten || (await HasChangedAsync(metaTypes));
-            if (hasChanges)
-            {
-                var (generatedSyntaxTree, anyTypesGenerated) = await DocumentTransform
-                    .TransformAsync(this, metaTypes)
-                    .ConfigureAwait(false);
-                do
-                {
-                    try
-                    {
-                        using var outputFileStream = File.OpenWrite(outputFilePath);
-                        if (anyTypesGenerated)
-                        {
-                            using var outputWriter = new StreamWriter(outputFileStream);
-                            var outputText = await generatedSyntaxTree.GetTextAsync(cancellationToken);
-                            outputText.Write(outputWriter);
-                            await outputWriter.FlushAsync();
-                            outputFileStream.SetLength(outputFileStream.Position);
-                        }
-                        else
-                        {
-                            outputFileStream.SetLength(0);
-                        }
-                        return anyTypesGenerated;
-                    }
-                    catch (IOException ex) when (ex.HResult == ProcessCannotAccessFileHR && retriesLeft > 0)
-                    {
-                        retriesLeft--;
-                        await Task.Delay(200).ConfigureAwait(false);
-                    }
-                }
-                while (true);
-            }
-            return File.Exists(outputFilePath) && (new FileInfo(outputFilePath)).Length > 0;
-        }
-
-        private async Task<ImmutableDictionary<INamedTypeSymbol, MetaType>> GetAllTypeDefinitionsAsync(CSharpCompilation compilation)
-        {
-            var result = new ConcurrentDictionary<INamedTypeSymbol, MetaType>(SymbolEqualityComparer.Default);
-
-            async Task TryAdd(INamedTypeSymbol typeSymbol)
-            {
-                var syntax = await typeSymbol.DeclaringSyntaxReferences[0].GetSyntaxAsync();
-                var inputSemanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
-                result.TryAdd(typeSymbol, new MetaType(typeSymbol, syntax as BaseTypeDeclarationSyntax, inputSemanticModel, this));
-            }
-
-            await Task.WhenAll(GetAllTypeSymbolsVisitor.Execute(compilation).Select(TryAdd));
-            return result.ToImmutableDictionary(SymbolEqualityComparer.Default);
-        }
-
-        private static ImmutableHashSet<INamedTypeSymbol> GetIntrinsicSymbols(CSharpCompilation compilation)
-        {
-            var types = new[] { typeof(byte),
-                typeof(short), typeof(ushort),
-                typeof(int), typeof(uint),
-                typeof(long), typeof(ulong),
-                typeof(decimal), typeof(double), typeof(float),
-                typeof(string), typeof(Guid), typeof(Uri),
-                typeof(DateTimeOffset)
-            };
-            var values = types.Select(t => compilation.GetTypeByMetadataName(t.FullName)).ToList();
-            return values.ToImmutableHashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-        }
-
-
-        private static RuntimeLibrary FindMatchingLibrary(IEnumerable<RuntimeLibrary> libraries, AssemblyName name)
-        {
-            foreach (var runtime in libraries)
-            {
-                if (string.Equals(runtime.Name, name.Name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return runtime;
-                }
-
-                // If the NuGet package name does not exactly match the AssemblyName,
-                // we check whether the assembly file name is matching
-                if (runtime.RuntimeAssemblyGroups.Any(
-                        g => g.AssetPaths.Any(
-                            p => string.Equals(Path.GetFileNameWithoutExtension(p), name.Name, StringComparison.OrdinalIgnoreCase))))
-                {
-                    return runtime;
-                }
-            }
-            return null;
-        }
-
-        private static DateTime GetLastModifiedAssemblyTime(string assemblyListPath)
-        {
-            if (!File.Exists(assemblyListPath))
-            {
-                return DateTime.MinValue;
-            }
-
-            var timestamps = (from path in File.ReadAllLines(assemblyListPath)
-                              where File.Exists(path)
-                              select File.GetLastWriteTime(path)).ToList();
-            return timestamps.Any() ? timestamps.Max() : DateTime.MinValue;
-        }
-
-        private static void ReportError(IProgress<Diagnostic> progress, string id, SyntaxTree inputSyntaxTree, Exception ex)
-        {
-            Console.Error.WriteLine($"Exception in file processing: {ex}");
-
-            if (progress == null)
-            {
-                return;
-            }
-
-            const string category = "CodeGen.Roslyn: Transformation";
-            const string messageFormat = "{0}";
-
-            var descriptor = new DiagnosticDescriptor(
-                id,
-                "Error during transformation",
-                messageFormat,
-                category,
-                DiagnosticSeverity.Error,
-                true);
-
-            var location = inputSyntaxTree != null ? Location.Create(inputSyntaxTree, TextSpan.FromBounds(0, 0)) : Location.None;
-
-            var messageArgs = new object[]
-            {
-                ex,
-            };
-
-            var reportDiagnostic = Diagnostic.Create(descriptor, location, messageArgs);
-
-            progress.Report(reportDiagnostic);
-        }
-
-        private CSharpCompilation CreateCompilation(CancellationToken cancellationToken)
-        {
-            var compilation = CSharpCompilation.Create("codegen")
-                .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
-                .WithReferences(ReferencePaths.Select(p => MetadataReference.CreateFromFile(p)));
-            var parseOptions = new CSharpParseOptions(preprocessorSymbols: PreprocessorSymbols);
-
-            foreach (var sourceFile in Compile)
-            {
-                using (var stream = File.OpenRead(sourceFile))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var text = SourceText.From(stream);
-                    compilation = compilation.AddSyntaxTrees(
-                        CSharpSyntaxTree.ParseText(
-                            text,
-                            parseOptions,
-                            sourceFile,
-                            cancellationToken));
-                }
-            }
-
-            return compilation;
         }
 
         private Assembly LoadAssembly(AssemblyName assemblyName)
@@ -546,6 +493,46 @@ namespace CodeGeneration.Chorus
 
             File.WriteAllLines(assemblyListPath, assemblyPaths);
         }
-    }
 
+        private async Task<bool> TransformFileAsync(string outputFilePath, IImmutableList<MetaType> metaTypes, DateTime assembliesLastModified, CancellationToken cancellationToken = default)
+        {
+            var retriesLeft = 3;
+
+            var lastWritten = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
+            var hasChanges = assembliesLastModified > lastWritten || (await HasChangedAsync(metaTypes));
+            if (hasChanges)
+            {
+                var (generatedSyntaxTree, anyTypesGenerated) = await DocumentTransform
+                    .TransformAsync(this, metaTypes)
+                    .ConfigureAwait(false);
+                do
+                {
+                    try
+                    {
+                        using var outputFileStream = File.OpenWrite(outputFilePath);
+                        if (anyTypesGenerated)
+                        {
+                            using var outputWriter = new StreamWriter(outputFileStream);
+                            var outputText = await generatedSyntaxTree.GetTextAsync(cancellationToken);
+                            outputText.Write(outputWriter);
+                            await outputWriter.FlushAsync();
+                            outputFileStream.SetLength(outputFileStream.Position);
+                        }
+                        else
+                        {
+                            outputFileStream.SetLength(0);
+                        }
+                        return anyTypesGenerated;
+                    }
+                    catch (IOException ex) when (ex.HResult == ProcessCannotAccessFileHR && retriesLeft > 0)
+                    {
+                        retriesLeft--;
+                        await Task.Delay(200).ConfigureAwait(false);
+                    }
+                }
+                while (true);
+            }
+            return File.Exists(outputFilePath) && (new FileInfo(outputFilePath)).Length > 0;
+        }
+    }
 }

@@ -160,7 +160,11 @@ namespace CodeGeneration.Chorus
             var attribute = TypeSymbol?.GetAttributes().FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, typeSymbol));
             if (attribute != null)
             {
-                return attribute.ConstructorArguments[0];
+                if (attribute.ConstructorArguments.Length == 1)
+                {
+                    return attribute.ConstructorArguments[0];
+                }
+                throw new InvalidDataException($"The abstract type resolver {typeSymbol.Name} for {TypeSymbol?.Name} could does not exist or is invalid");
             }
             return default;
         }
