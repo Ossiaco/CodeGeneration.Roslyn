@@ -543,44 +543,75 @@ namespace CodeGeneration.Chorus.Json
 
         internal static class MessageSyntax
         {
-            public static readonly IdentifierNameSyntax ActorId = IdentifierName("ActorId");
+            public static readonly IdentifierNameSyntax ActorId;
 
-            public static readonly IdentifierNameSyntax ActorIdParameterName = IdentifierName("actorId");
+            public static readonly IdentifierNameSyntax ActorIdParameterName;
 
-            public static readonly IdentifierNameSyntax CorrelationParameterName = IdentifierName("correlation");
+            public static readonly IdentifierNameSyntax CorrelationParameterName;
 
-            public static readonly IEnumerable<ParameterSyntax> DefaultParameters = new[] { CorrelatingParamType, ActorIdParameterType };
+            public static readonly IEnumerable<ParameterSyntax> DefaultParameters;
 
-            public static ConstructorInitializerSyntax DirectDescendentConstructorInitializer = SyntaxFactory.ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, DirectDescendentArgumentList);
+            public static ConstructorInitializerSyntax DirectDescendentConstructorInitializer;
 
-            private static readonly ParameterSyntax ActorIdParameterType = Parameter(ActorIdParameterName.Identifier).WithType(GuidType);
-            private static readonly IEnumerable<ParameterSyntax> BaseParameters = new[] { CorrelatingParamType, ActorIdParameterType };
-            private static readonly ParameterSyntax CorrelatingParamType = Parameter(CorrelationParameterName.Identifier).WithType(ParseName("Chorus.Messaging.IMessage"));
-            private static readonly IdentifierNameSyntax CorrelationId = IdentifierName("CorrelationId");
-            private static readonly ArgumentListSyntax DirectDescendentArgumentList = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, DirectDescendentArguments));
-            private static readonly MemberAccessExpressionSyntax DotId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, CorrelationParameterName, Id);
-            private static readonly MemberAccessExpressionSyntax DotUserId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, CorrelationParameterName, UserId);
-            private static readonly IdentifierNameSyntax GuidType = IdentifierName(typeof(Guid).FullName);
-            private static readonly IdentifierNameSyntax Id = IdentifierName("Id");
-            private static readonly InvocationExpressionSyntax NewGuid = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, GuidType, IdentifierName(nameof(Guid.NewGuid)))
-                                                                       .WithOperatorToken(Token(SyntaxKind.DotToken)))
-                                                                       .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
-            private static readonly IEnumerable<ExpressionStatementSyntax> ParameterAssignment = new[]
+            private static readonly ParameterSyntax ActorIdParameterType;
+            private static readonly IEnumerable<ParameterSyntax> BaseParameters;
+            private static readonly ParameterSyntax CorrelatingParamType;
+            private static readonly IdentifierNameSyntax CorrelationId;
+            private static readonly IEnumerable<ArgumentSyntax> DescendentArguments;
+            private static readonly ArgumentListSyntax DirectDescendentArgumentList;
+            private static readonly IEnumerable<ArgumentSyntax> DirectDescendentArguments;
+            private static readonly MemberAccessExpressionSyntax DotId;
+            private static readonly MemberAccessExpressionSyntax DotUserId;
+            private static readonly IdentifierNameSyntax GuidType;
+            private static readonly IdentifierNameSyntax Id;
+            private static readonly InvocationExpressionSyntax NewGuid;
+            private static readonly IEnumerable<ExpressionStatementSyntax> ParameterAssignment;
+            private static readonly IdentifierNameSyntax PostedTime;
+            private static readonly InvocationExpressionSyntax ToUnixTimeMilliseconds;
+            private static readonly IdentifierNameSyntax UserId;
+            private static readonly MemberAccessExpressionSyntax UtcNow;
+
+            static MessageSyntax()
             {
-                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, Id, NewGuid)),
-                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, PostedTime, ToUnixTimeMilliseconds)),
-                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, UserId, DotUserId)),
-                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, ActorId, ActorIdParameterName)),
-                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, CorrelationId, DotId)),
-            };
-            private static readonly IdentifierNameSyntax PostedTime = IdentifierName("PostedTime");
-            private static readonly InvocationExpressionSyntax ToUnixTimeMilliseconds = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, UtcNow, IdentifierName(nameof(DateTimeOffset.ToUnixTimeMilliseconds)))
-                                                                       .WithOperatorToken(Token(SyntaxKind.DotToken)))
-                                                                       .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
-            private static readonly IdentifierNameSyntax UserId = IdentifierName("UserId");
-            private static readonly MemberAccessExpressionSyntax UtcNow = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName(typeof(DateTimeOffset).FullName), IdentifierName(nameof(DateTimeOffset.UtcNow)));
-            private static IEnumerable<ArgumentSyntax> DescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(ActorIdParameterName), NoneToken, ActorIdParameterName) };
-            private static IEnumerable<ArgumentSyntax> DirectDescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(ActorIdParameterName), NoneToken, ActorIdParameterName) };
+                ActorId = IdentifierName("ActorId");
+                ActorIdParameterName = IdentifierName("actorId");
+                CorrelationId = IdentifierName("CorrelationId");
+                CorrelationParameterName = IdentifierName("correlation");
+                Id = IdentifierName("Id");
+                PostedTime = IdentifierName("PostedTime");
+                UserId = IdentifierName("UserId");
+                GuidType = IdentifierName(typeof(Guid).FullName);
+                ActorIdParameterType = Parameter(ActorIdParameterName.Identifier).WithType(GuidType);
+                CorrelatingParamType = Parameter(CorrelationParameterName.Identifier).WithType(ParseName("Chorus.Messaging.IMessage"));
+                DirectDescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(ActorIdParameterName), NoneToken, ActorIdParameterName) };
+                DirectDescendentArgumentList = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, DirectDescendentArguments));
+                DescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(ActorIdParameterName), NoneToken, ActorIdParameterName) };
+                DefaultParameters = new[] { CorrelatingParamType, ActorIdParameterType };
+                DotId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, CorrelationParameterName, Id);
+                DotUserId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, CorrelationParameterName, UserId);
+                UtcNow = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName(typeof(DateTimeOffset).FullName), IdentifierName(nameof(DateTimeOffset.UtcNow)));
+
+                ToUnixTimeMilliseconds = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, UtcNow, IdentifierName(nameof(DateTimeOffset.ToUnixTimeMilliseconds)))
+                                                                           .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                                                                           .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+
+                NewGuid = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, GuidType, IdentifierName(nameof(Guid.NewGuid)))
+                                                                           .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                                                                           .WithArgumentList(ArgumentList().WithOpenParenToken(Token(SyntaxKind.OpenParenToken)).WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
+                ParameterAssignment = new[]
+                {
+                    ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, Id, NewGuid)),
+                    ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, PostedTime, ToUnixTimeMilliseconds)),
+                    ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, UserId, DotUserId)),
+                    ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, ActorId, ActorIdParameterName)),
+                    ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, CorrelationId, DotId)),
+                };
+
+                BaseParameters = new[] { CorrelatingParamType, ActorIdParameterType };
+
+
+                DirectDescendentConstructorInitializer = SyntaxFactory.ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, DirectDescendentArgumentList);
+            }
 
             public static MemberDeclarationSyntax AbstractMessageCtor(MetaType sourceMetaType)
             {
@@ -603,25 +634,44 @@ namespace CodeGeneration.Chorus.Json
 
         static class ResponseMessageSyntax
         {
-            public static readonly MemberAccessExpressionSyntax DotActorId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, requestParam, MessageSyntax.ActorId);
+            public static readonly MemberAccessExpressionSyntax DotActorId;
 
-            public static IEnumerable<IdentifierNameSyntax> AssignmentArguments = new[] { requestParam, hasMoreParam };
+            public static IEnumerable<IdentifierNameSyntax> AssignmentArguments;
 
-            public static IEnumerable<ParameterSyntax> OptionalParameters = new[] { hasMoreParamType };
+            public static IEnumerable<ParameterSyntax> OptionalParameters;
 
-            public static IEnumerable<ParameterSyntax> RequiredParameters = new[] { requestParamType };
+            public static IEnumerable<ParameterSyntax> RequiredParameters;
 
-            private static readonly IdentifierNameSyntax errorProperty = IdentifierName("Error");
-            private static readonly IdentifierNameSyntax exceptionParam = IdentifierName("error");
-            private static readonly ParameterSyntax exceptionParamType = Parameter(exceptionParam.Identifier).WithType(ParseName(typeof(Exception).FullName));
-            private static readonly IdentifierNameSyntax hasMoreParam = IdentifierName("hasMore");
-            private static readonly ParameterSyntax hasMoreParamType = Parameter(hasMoreParam.Identifier).WithType(NullableType(ParseName(typeof(bool).FullName)))
-                    .WithDefault(EqualsValueClause((ExpressionSyntax)Syntax.Generator.NullLiteralExpression()));
-            private static readonly ArgumentListSyntax messageCtorAssignment = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, Argument(NameColon(MessageSyntax.CorrelationParameterName), NoneToken, requestParam), Argument(NameColon(MessageSyntax.ActorIdParameterName), NoneToken, DotActorId)));
-            private static readonly IdentifierNameSyntax requestIdParam = IdentifierName("requestId");
-            private static readonly ParameterSyntax requestIdParamType = Parameter(requestIdParam.Identifier).WithType(ParseName(typeof(int).FullName));
-            private static readonly IdentifierNameSyntax requestParam = IdentifierName("request");
-            private static readonly ParameterSyntax requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Messaging.IRequestMessage"));
+            private static readonly IdentifierNameSyntax errorProperty;
+            private static readonly IdentifierNameSyntax exceptionParam;
+            private static readonly ParameterSyntax exceptionParamType;
+            private static readonly IdentifierNameSyntax hasMoreParam;
+            private static readonly ParameterSyntax hasMoreParamType;
+            private static readonly ArgumentListSyntax messageCtorAssignment;
+            private static readonly IdentifierNameSyntax requestIdParam;
+            private static readonly ParameterSyntax requestIdParamType;
+            private static readonly IdentifierNameSyntax requestParam;
+            private static readonly ParameterSyntax requestParamType;
+
+            static ResponseMessageSyntax()
+            {
+                requestParam = IdentifierName("request");
+                errorProperty = IdentifierName("Error");
+                requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Messaging.IRequestMessage"));
+                requestIdParam = IdentifierName("requestId");
+                requestIdParamType = Parameter(requestIdParam.Identifier).WithType(ParseName(typeof(int).FullName));
+                hasMoreParam = IdentifierName("hasMore");
+                hasMoreParamType = Parameter(hasMoreParam.Identifier).WithType(NullableType(ParseName(typeof(bool).FullName)))
+                        .WithDefault(EqualsValueClause((ExpressionSyntax)Syntax.Generator.NullLiteralExpression()));
+
+                exceptionParam = IdentifierName("error");
+                exceptionParamType = Parameter(exceptionParam.Identifier).WithType(ParseName(typeof(Exception).FullName));
+                RequiredParameters = new[] { requestParamType };
+                OptionalParameters = new[] { hasMoreParamType };
+                AssignmentArguments = new[] { requestParam, hasMoreParam };
+                DotActorId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, requestParam, MessageSyntax.ActorId);
+                messageCtorAssignment = ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, Argument(NameColon(MessageSyntax.CorrelationParameterName), NoneToken, requestParam), Argument(NameColon(MessageSyntax.ActorIdParameterName), NoneToken, DotActorId)));
+            }
 
             public static async Task<IEnumerable<MemberDeclarationSyntax>> AbstractResponseCtorAsync(MetaType sourceMetaType)
             {
