@@ -54,10 +54,10 @@
                     {
                         switch (key.TypeKind)
                         {
-                            case TypeKind.Interface when metaType.IsJsonSerializeable && metaType.IsGenericType:
+                            case TypeKind.Interface when metaType.IsJsonSerializable && metaType.IsGenericType:
                                 context.Progress.Report(Diagnostic.Create(NotSupportedDescriptor, metaType.DeclarationSyntax.GetLocation(), key.TypeKind, key.Name));
                                 break;
-                            case TypeKind.Interface when metaType.IsJsonSerializeable:
+                            case TypeKind.Interface when metaType.IsJsonSerializable:
                                 var result = ImmutableArray<MemberDeclarationSyntax>.Empty.ToBuilder();
                                 var partialImplementation = context.AllNamedTypeSymbols.Values.FirstOrDefault(m => IsPartialImplementationOfInterface(m, metaType));
                                 result.Add(await CreateClassDeclarationAsync(partialImplementation));

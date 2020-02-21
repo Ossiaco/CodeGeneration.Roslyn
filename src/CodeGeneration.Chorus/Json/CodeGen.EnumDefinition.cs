@@ -14,6 +14,7 @@ namespace CodeGeneration.Chorus.Json
 
             var namespaceSyntax = metaType.DeclarationSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.WithoutTrivia();
             var identifierSyntax = IdentifierName(metaType.InterfaceNameIdentifier);
+            var enumerableSyntax = IdentifierName($"IEnumerable<{metaType.InterfaceNameIdentifier.ValueText}>");
 
             var className = $"{metaType.ClassNameIdentifier.Text}JsonSerializer";
             var namespaceName = ParseName(typeof(System.Text.Json.JsonElement).Namespace);
@@ -23,12 +24,12 @@ namespace CodeGeneration.Chorus.Json
             if (metaType.IsEnumAsString)
             {
                 innerMembers.AddRange(JsonGetEnumMethods("GetEnumString", identifierSyntax));
-                innerMembers.AddRange(JsonWriteEnumMethods("WriteEnumString", identifierSyntax));
+                innerMembers.AddRange(JsonWriteEnumMethods("WriteEnumString", identifierSyntax, enumerableSyntax));
             }
             else
             {
                 innerMembers.AddRange(JsonGetEnumMethods("GetEnum", identifierSyntax));
-                innerMembers.AddRange(JsonWriteEnumMethods("WriteEnum", identifierSyntax));
+                innerMembers.AddRange(JsonWriteEnumMethods("WriteEnum", identifierSyntax, enumerableSyntax));
             }
 
             var partialClass = ClassDeclaration(Identifier(className))
@@ -134,13 +135,17 @@ namespace CodeGeneration.Chorus.Json
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
-        private IEnumerable<MethodDeclarationSyntax> JsonWriteEnumMethods(string methodToCall, IdentifierNameSyntax identifierSyntax)
+        private IEnumerable<MethodDeclarationSyntax> JsonWriteEnumMethods(string methodToCall, IdentifierNameSyntax identifierSyntax, IdentifierNameSyntax enumerableSyntax)
         {
-            var writeMethodName = Identifier($"Write{metaType.ClassNameIdentifier.Text}");
+            var writeArrayMethodName = Identifier($"Write{metaType.ClassNameIdentifier.Text}Array");
             var safeWriteMethodName = Identifier($"SafeWrite{metaType.ClassNameIdentifier.Text}");
+            var writeMethodName = Identifier($"Write{metaType.ClassNameIdentifier.Text}");
+            var safeWriteArrayMethodName = Identifier($"SafeWrite{metaType.ClassNameIdentifier.Text}Array");
             var classNameSyntax = metaType.ClassName;
             var valueParameter = Parameter(_valueName.Identifier).WithType(identifierSyntax);
             var nullableValueParameter = Parameter(_valueName.Identifier).WithType(NullableType(identifierSyntax));
+            var arrayParameter = Parameter(_valueName.Identifier).WithType(enumerableSyntax);
+            var nullableArrayParameter = Parameter(_valueName.Identifier).WithType(NullableType(enumerableSyntax));
 
             yield return MethodDeclaration(_voidType, writeMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
@@ -152,6 +157,18 @@ namespace CodeGeneration.Chorus.Json
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter, _propertyNameParameter, nullableValueParameter })))
                 .WithExpressionBody(ArrowExpressionClause(WriteEnum($"Safe{methodToCall}", classNameSyntax)))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+            yield return MethodDeclaration(_voidType, writeArrayMethodName)
+                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter, _propertyNameParameter, arrayParameter })))
+                .WithExpressionBody(ArrowExpressionClause(WriteEnum($"{methodToCall}Array", classNameSyntax)))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+            yield return MethodDeclaration(_voidType, safeWriteArrayMethodName)
+                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _utf8JsonWriterThisParameter, _propertyNameParameter, nullableArrayParameter })))
+                .WithExpressionBody(ArrowExpressionClause(WriteEnum($"Safe{methodToCall}Array", classNameSyntax)))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
         }

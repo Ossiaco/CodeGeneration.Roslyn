@@ -50,7 +50,7 @@ namespace CodeGeneration.Chorus
             TypeSymbol = typeSymbol;
             DeclarationSyntax = declarationSyntax;
             SemanticModel = semanticModel;
-            //ISerializeable = IsAssignableFrom(CodeGen.IJsonSerializeableType);
+            //ISerializeable = IsAssignableFrom(CodeGen.IJsonSerializableType);
 
             var codeGenAttribute = typeSymbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass.IsOrDerivesFrom<GenerateClassAttribute>());
             if (codeGenAttribute != null)
@@ -81,7 +81,7 @@ namespace CodeGeneration.Chorus
                 OutputFilePath = Path.Combine(Path.GetDirectoryName(fi), Path.GetFileNameWithoutExtension(fi) + $".generated.cs");
             }
 
-            IsJsonSerializeable = IsAssignableFrom(TransformationContext.JsonSerializeableType);
+            IsJsonSerializable = IsAssignableFrom(TransformationContext.JsonSerializeableType);
 
         }
 
@@ -117,7 +117,7 @@ namespace CodeGeneration.Chorus
 
         public bool IsGenericType => TypeSymbol.IsGenericType;
 
-        public bool IsJsonSerializeable { get; }
+        public bool IsJsonSerializable { get; }
 
         public bool IsPartialClass => (_isPartialClass ?? (_isPartialClass = TypeSymbol.IsReferenceType && (DeclarationSyntax?.Modifiers.Any(SyntaxKind.PartialKeyword) ?? false))).Value;
 
