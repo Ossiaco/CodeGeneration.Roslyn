@@ -20,33 +20,17 @@
 
         public CommandLineTest(ITestOutputHelper outputHelper)
         {
-            this.loggerFactory = LogFactory.Create(outputHelper);
+            this.loggerFactory = Divergic.Logging.Xunit.LogFactory.Create(outputHelper);
         }
 
         [Fact]
-        public async Task TestChorusBuildAsync()
+        public async Task TestChorusBuild()
         {
             var logger = this.loggerFactory.CreateLogger<CommandLineTest>();
             try
             {
                 const string responsFile = @"\ossiaco\chorus\artifacts\obj\Chorus\Debug\netcoreapp3.1\Chorus.csproj.dotnet-codegen.rsp";
                 const string workingDirectory = @"\ossiaco\\chorus\src\Chorus\src";
-                await ExecuteAsync(responsFile, workingDirectory, logger);
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e.Message);
-            }
-        }
-
-        [Fact]
-        public async Task TestCosmosBuildAsync()
-        {
-            var logger = this.loggerFactory.CreateLogger<CommandLineTest>();
-            try
-            {
-                const string responsFile = @"\git\ossiaco\Chorus.Azure.Cosmos\src\obj\Debug\netstandard2.0\Chorus.Azure.Cosmos.csproj.dotnet-codegen.rsp";
-                const string workingDirectory = @"\git\ossiaco\Chorus.Azure.Cosmos\src";
                 await ExecuteAsync(responsFile, workingDirectory, logger);
             }
             catch (Exception e)
