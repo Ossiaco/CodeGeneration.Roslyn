@@ -348,13 +348,15 @@ namespace CodeGeneration.Chorus
 
         private async Task<bool> HasChangedAsync(IImmutableList<MetaType> types)
         {
-            static async Task<bool> HasAnyAncestorChangedAsync(MetaType metaType)
+            var processed = new HashSet<MetaType>(MetaType.DefaultComparer);
+
+            async Task<bool> HasAnyAncestorChangedAsync(MetaType metaType)
             {
                 var hasChanged = false;
                 metaType = await metaType.GetDirectAncestorAsync();
                 if (!metaType.IsDefault)
                 {
-                    hasChanged = metaType.HasChanged();
+                    hasChanged = processed.Add(metaType) && metaType.HasChanged();
                     if (!hasChanged)
                     {
                         hasChanged = await HasAnyAncestorChangedAsync(metaType);
@@ -363,15 +365,15 @@ namespace CodeGeneration.Chorus
                 return hasChanged;
             }
 
-            static async Task<bool> HasAnyDescendentChangedAsync(MetaType metaType)
+            async Task<bool> HasAnyDescendentChangedAsync(MetaType metaType)
             {
                 var descendendents = await metaType.GetDirectDescendentsAsync();
-                return descendendents.Any(d => d.HasChanged());
+                return descendendents.Any(d => processed.Add(metaType) && d.HasChanged());
             }
 
-            static async Task<bool> HasChangedAsync(MetaType metaType)
+            async Task<bool> HasChangedAsync(MetaType metaType)
             {
-                var hasChanged = metaType.HasChanged();
+                var hasChanged = processed.Add(metaType) && metaType.HasChanged();
                 if (!hasChanged)
                 {
                     hasChanged = await HasAnyAncestorChangedAsync(metaType);

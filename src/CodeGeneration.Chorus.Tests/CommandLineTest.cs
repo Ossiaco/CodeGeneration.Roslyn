@@ -5,10 +5,8 @@
     using System.IO;
     using System.Linq;
     using System.Text;
-    using System.Threading;
     using System.Threading.Tasks;
     using CodeGeneration.Chorus;
-    using Divergic.Logging.Xunit;
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
     using Microsoft.CodeAnalysis.Text;
