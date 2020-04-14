@@ -665,7 +665,7 @@ namespace CodeGeneration.Chorus.Json
                         .WithDefault(EqualsValueClause((ExpressionSyntax)Syntax.Generator.NullLiteralExpression()));
 
                 exceptionParam = IdentifierName("error");
-                exceptionParamType = Parameter(exceptionParam.Identifier).WithType(ParseName(typeof(Exception).FullName));
+                exceptionParamType = Parameter(exceptionParam.Identifier).WithType(ParseName("Chorus.Messaging.RequestException"));
                 RequiredParameters = new[] { requestParamType };
                 OptionalParameters = new[] { hasMoreParamType };
                 AssignmentArguments = new[] { requestParam, hasMoreParam };

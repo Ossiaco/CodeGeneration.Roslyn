@@ -26,11 +26,11 @@
     </ProjectReference>
   </ItemGroup>
 
-  <ItemGroup Condition=" !$(UseRoslynSource) ">
+  <ItemGroup Condition="!$(UseRoslynSource)=='True'">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="[$(RoslynNugetVersion)]" />
   </ItemGroup>
 
-  <ItemGroup Condition=" $(UseRoslynSource) ">
+  <ItemGroup Condition="$(UseRoslynSource)=='True'">
     <ProjectReference Include="..\submodules\roslyn\src\Workspaces\Core\Portable\Microsoft.CodeAnalysis.Workspaces.csproj" />
     <ProjectReference Include="..\submodules\roslyn\src\Workspaces\CSharp\Portable\Microsoft.CodeAnalysis.CSharp.Workspaces.csproj" />
   </ItemGroup>
