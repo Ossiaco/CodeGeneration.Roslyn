@@ -4,7 +4,6 @@
 
 namespace CodeGeneration.Chorus
 {
-    using System.Collections;
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Diagnostics;
@@ -52,6 +51,7 @@ namespace CodeGeneration.Chorus
             SemanticModel = semanticModel;
             //ISerializeable = IsAssignableFrom(CodeGen.IJsonSerializableType);
 
+            this.IsIncompleteClass = typeSymbol?.GetMembers().OfType<IPropertySymbol>().Any(f => f.IsPropertyIgnored()) ?? true;
             var codeGenAttribute = typeSymbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass.IsOrDerivesFrom<GenerateClassAttribute>());
             if (codeGenAttribute != null)
             {
@@ -82,7 +82,6 @@ namespace CodeGeneration.Chorus
             }
 
             IsJsonSerializable = IsAssignableFrom(TransformationContext.JsonSerializeableType);
-
         }
 
         public INamedTypeSymbol AbstractAttribute { get; }
@@ -116,6 +115,8 @@ namespace CodeGeneration.Chorus
         public bool IsEnumAsString { get; }
 
         public bool IsGenericType => TypeSymbol.IsGenericType;
+
+        public bool IsIncompleteClass { get; }
 
         public bool IsJsonSerializable { get; }
 

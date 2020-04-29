@@ -29,7 +29,7 @@
             var logger = this.loggerFactory.CreateLogger<CommandLineTest>();
             try
             {
-                const string responsFile = @"\ossiaco\chorus\artifacts\obj\Chorus\Debug\netcoreapp3.1\Chorus.csproj.dotnet-codegen.rsp";
+                const string responsFile = @"\ossiaco\chorus\artifacts\obj\Chorus\Debug\netstandard2.1\Chorus.csproj.dotnet-codegen.rsp";
                 const string workingDirectory = @"\ossiaco\\chorus\src\Chorus\src";
                 await ExecuteAsync(responsFile, workingDirectory, logger);
             }

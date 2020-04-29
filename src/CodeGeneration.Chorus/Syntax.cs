@@ -60,7 +60,10 @@ namespace CodeGeneration.Chorus
             var classType = (TypeSyntax)ParseName(metaType.ClassNameIdentifier.ValueText);
             var IEquatableType = Identifier("System.IEquatable");
 
-            yield return SimpleBaseType(interfaceType);
+            if (!metaType.IsIncompleteClass)
+            {
+                yield return SimpleBaseType(interfaceType);
+            }
             yield return SimpleBaseType(GenericName(IEquatableType, TypeArgumentList(SingletonSeparatedList(interfaceType))));
             yield return SimpleBaseType(GenericName(IEquatableType, TypeArgumentList(SingletonSeparatedList(classType))));
         }
