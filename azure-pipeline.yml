@@ -112,5 +112,11 @@ stages:
     - task: DotNetCoreCLI@2
       displayName: 'dotnet pack $(buildConfiguration)'
       inputs:
-          command: pack
-          packagesToPack: '**/*.csproj'
+        command: 'pack'
+        packagesToPack: '**/*.csproj'
+        nobuild: true
+        includesymbols: true
+        includesource: true
+        versioningScheme: 'off'
+        verbosityPack: 'Normal'
+
