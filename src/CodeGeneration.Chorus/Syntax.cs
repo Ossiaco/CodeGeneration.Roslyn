@@ -1,6 +1,7 @@
 ﻿//------------------------------------------------------------
 // Copyright (c) Ossiaco Inc.  All rights reserved.
 //------------------------------------------------------------
+#nullable enable
 
 namespace CodeGeneration.Chorus
 {
@@ -48,8 +49,8 @@ namespace CodeGeneration.Chorus
             var context = metaType.TransformationContext;
             if (value.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
-                var typeSymbol = ((INamedTypeSymbol)model.GetTypeInfo(nameSyntax).Type);
-                if (!typeSymbol.Equals(context.JsonSerializeableType))
+                var typeSymbol = ((INamedTypeSymbol?)model.GetTypeInfo(nameSyntax).Type);
+                if (typeSymbol!= null && !SymbolEqualityComparer.Default.Equals(typeSymbol, context.JsonSerializeableType))
                 {
                     SimpleNameSyntax leafName = IdentifierName(typeSymbol.Name.Substring(1));
                     TypeSyntax typeSyntax = (typeSymbol.ContainingSymbol as INamespaceOrTypeSymbol)?.GetFullyQualifiedSymbolName(NullableAnnotation.None) is NameSyntax parent ? (NameSyntax)QualifiedName(parent, leafName) : leafName;
@@ -76,9 +77,9 @@ namespace CodeGeneration.Chorus
                 memberAccess);
         }
 
-        internal static ExpressionSyntax ChainBinaryExpressions(this IEnumerable<ExpressionSyntax> expressions, SyntaxKind binaryOperator)
+        internal static ExpressionSyntax? ChainBinaryExpressions(this IEnumerable<ExpressionSyntax> expressions, SyntaxKind binaryOperator)
         {
-            return expressions.Aggregate((ExpressionSyntax)null, (agg, e) => agg != null ? BinaryExpression(binaryOperator, agg, e) : e);
+            return expressions.Aggregate((ExpressionSyntax?)null, (agg, e) => agg != null ? BinaryExpression(binaryOperator, agg, e) : e);
         }
 
         internal static IdentifierNameSyntax ClassName(this InterfaceDeclarationSyntax value) => IdentifierName(Identifier(value.Identifier.ValueText.Substring(1)));
@@ -101,7 +102,7 @@ namespace CodeGeneration.Chorus
                 ArgumentList());
         }
 
-        internal static ExpressionSyntax CreateImmutableStack(TypeSyntax elementType = null)
+        internal static ExpressionSyntax CreateImmutableStack(TypeSyntax? elementType = null)
         {
             var typeSyntax = QualifiedName(
                 QualifiedName(
@@ -146,7 +147,7 @@ namespace CodeGeneration.Chorus
 
             if (type.Namespace != null)
             {
-                NameSyntax namespaceName = null;
+                NameSyntax? namespaceName = null;
                 foreach (var segment in type.Namespace.Split('.'))
                 {
                     var segmentName = IdentifierName(segment);
@@ -155,7 +156,7 @@ namespace CodeGeneration.Chorus
                         : QualifiedName(namespaceName, IdentifierName(segment));
                 }
 
-                return QualifiedName(namespaceName, leafType);
+                return QualifiedName(namespaceName!, leafType);
             }
 
             return leafType;
@@ -163,7 +164,7 @@ namespace CodeGeneration.Chorus
 
         internal static NameSyntax GetTypeSyntax(string ns, string leafType)
         {
-            NameSyntax namespaceName = null;
+            NameSyntax? namespaceName = null;
             foreach (var segment in ns.Split('.'))
             {
                 var segmentName = IdentifierName(segment);
@@ -172,7 +173,7 @@ namespace CodeGeneration.Chorus
                     : QualifiedName(namespaceName, IdentifierName(segment));
             }
 
-            return QualifiedName(namespaceName, IdentifierName(leafType));
+            return QualifiedName(namespaceName!, IdentifierName(leafType));
         }
 
         internal static NameSyntax IEnumerableOf(TypeSyntax typeSyntax)

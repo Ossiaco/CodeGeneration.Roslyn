@@ -24,13 +24,13 @@
         }
 
         [Fact]
-        public async Task TestChorusBuild()
+        public async Task TestChorusBuildAsync()
         {
             var logger = this.loggerFactory.CreateLogger<CommandLineTest>();
             try
             {
                 const string responsFile = @"\ossiaco\chorus\artifacts\obj\Chorus\Debug\netstandard2.1\Chorus.csproj.dotnet-codegen.rsp";
-                const string workingDirectory = @"\ossiaco\\chorus\src\Chorus\src";
+                const string workingDirectory = @"\ossiaco\chorus\src\Chorus\src";
                 await ExecuteAsync(responsFile, workingDirectory, logger);
             }
             catch (Exception e)
@@ -72,6 +72,10 @@
             Assert.True(compile.Any(), "There are not target files to compile.");
             Assert.NotNull(outputDirectory);
 
+            if (outputDirectory.EndsWith("\\"))
+            {
+                outputDirectory = outputDirectory.Substring(0, outputDirectory.Length - 1);
+            }
 
             compile = Sanitize(workingDirectory, compile);
             var generator = new CompilationGenerator
@@ -136,12 +140,11 @@
 
             void AddSyntaxTrees(string sourceFile)
             {
-                using (var stream = File.OpenRead(sourceFile))
-                {
-                    var text = SourceText.From(stream);
-                    compilation = compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText(text, parseOptions, sourceFile));
-                }
+                using var stream = File.OpenRead(sourceFile);
+                var text = SourceText.From(stream);
+                compilation = compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText(text, parseOptions, sourceFile));
             }
+
             foreach (var sourceFile in genrator.Compile)
             {
                 AddSyntaxTrees(sourceFile);

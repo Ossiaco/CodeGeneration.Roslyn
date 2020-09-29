@@ -1,6 +1,6 @@
-﻿//------------------------------------------------------------
-// Copyright (c) Ossiaco Inc.  All rights reserved.
-//------------------------------------------------------------
+﻿// ------------------------------------------------------------
+// Copyright (c) Ossiaco Inc. All rights reserved.
+// ------------------------------------------------------------
 
 namespace CodeGeneration.Chorus
 {
@@ -24,12 +24,12 @@ namespace CodeGeneration.Chorus
         /// <summary>
         /// Gets or sets the AbstractAttributeType.
         /// </summary>
-        public Type AbstractAttributeType { get; set; }
+        public Type? AbstractAttributeType { get; set; }
 
         /// <summary>
         /// Gets or sets the AbstractField.
         /// </summary>
-        public string AbstractField { get; set; }
+        public string? AbstractField { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether IsAbstract.

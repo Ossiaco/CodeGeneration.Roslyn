@@ -1,6 +1,6 @@
-﻿//------------------------------------------------------------
-// Copyright (c) Ossiaco Inc.  All rights reserved.
-//------------------------------------------------------------
+﻿// ------------------------------------------------------------
+// Copyright (c) Ossiaco Inc. All rights reserved.
+// ------------------------------------------------------------
 
 namespace CodeGeneration.Chorus
 {
@@ -14,12 +14,12 @@ namespace CodeGeneration.Chorus
     public enum JsonStringEnumFormat
     {
         /// <summary>
-        /// Defines the Default
+        /// Defines the Default.
         /// </summary>
         Default,
 
         /// <summary>
-        /// Defines the LowerCase
+        /// Defines the LowerCase.
         /// </summary>
         LowerCase,
 

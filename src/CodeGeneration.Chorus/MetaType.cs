@@ -2,6 +2,8 @@
 // Copyright (c) Ossiaco Inc. All rights reserved.
 //------------------------------------------------------------
 
+#nullable disable
+
 namespace CodeGeneration.Chorus
 {
     using System.Collections.Generic;
@@ -25,7 +27,7 @@ namespace CodeGeneration.Chorus
         private ImmutableHashSet<MetaProperty> _allProperties;
         private ImmutableArray<MetaType>? _ancestors;
         private ImmutableArray<MetaType>? _descendents;
-        private MetaType? _directAncestor;
+        private MetaType _directAncestor;
         private ImmutableArray<MetaType>? _explicitInterfaces;
         private bool? _hasChanged;
         private ImmutableHashSet<MetaProperty> _inheritedProperties;
@@ -219,7 +221,7 @@ namespace CodeGeneration.Chorus
             if (DeclarationSyntax?.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
                 var symbol = (INamedTypeSymbol)SemanticModel.GetTypeInfo(nameSyntax).Type;
-                if (!symbol.Equals(TransformationContext.JsonSerializeableType))
+                if (!SymbolEqualityComparer.Default.Equals(symbol, TransformationContext.JsonSerializeableType))
                 {
                     return _directAncestor = await SafeGetTypeAsync(symbol);
                 }
@@ -389,7 +391,7 @@ namespace CodeGeneration.Chorus
             return _abstractImplementations.Value;
         }
 
-        public async Task<HashSet<MetaType>> GetRecursiveDescendentsAsync(HashSet<MetaType>? values = null)
+        public async Task<HashSet<MetaType>> GetRecursiveDescendentsAsync(HashSet<MetaType> values = null)
         {
             values ??= new HashSet<MetaType>(MetaType.DefaultComparer);
             await GetPropertyOverridesAsync();

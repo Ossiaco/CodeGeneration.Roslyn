@@ -12,6 +12,7 @@ namespace CodeGeneration.Chorus
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
+    using System.Reflection;
     using System.Text;
     using System.Threading.Tasks;
     using Validation;
@@ -29,8 +30,9 @@ namespace CodeGeneration.Chorus
 // </auto-generated>
 // ------------------------------------------------------------------------------
 ".Replace("\r\n", "\n").Replace("\n", Environment.NewLine);// normalize regardless of git checkout policy
-        
-        private static string version = typeof(DocumentTransform).Assembly.GetName().Version.ToString();
+
+        private static AssemblyInformationalVersionAttribute versionAttribute = (AssemblyInformationalVersionAttribute)typeof(DocumentTransform).Assembly.GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false).FirstOrDefault();
+        private static string version = versionAttribute != null ? versionAttribute.InformationalVersion : typeof(DocumentTransform).Assembly.GetName().Version.ToString();
 
         internal static async Task<(SyntaxTree, bool)> TransformAsync(ITransformationContext transformationContext, IEnumerable<MetaType> metaTypes)
         {

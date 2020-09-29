@@ -1,123 +1,187 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
-    <NullableContextOptions>enable</NullableContextOptions>
-    <Nullable>enable</Nullable>
-    <IsTestReference>True</IsTestReference>
-    <AssemblyName>CodeGeneration.Chorus.Tests</AssemblyName>
-    <RootNamespace>CodeGeneration.Chorus.Tests</RootNamespace>
-    <CodeAnalysisRuleSet>.\CodeGeneration.Chorus.Tests.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>netcoreapp3.0</TargetFramework>
+		<NullableContextOptions>disable</NullableContextOptions>
+		<Nullable>disable</Nullable>
+		<IsTestReference>True</IsTestReference>
+		<AssemblyName>CodeGeneration.Chorus.Tests</AssemblyName>
+		<RootNamespace>CodeGeneration.Chorus.Tests</RootNamespace>
+		<CodeAnalysisRuleSet>.\CodeGeneration.Chorus.Tests.ruleset</CodeAnalysisRuleSet>
+		<AssemblyOriginatorKeyFile>opensource.snk</AssemblyOriginatorKeyFile>
+		<SignAssembly>false</SignAssembly>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="NewFolder\**" />
-    <EmbeddedResource Remove="NewFolder\**" />
-    <None Remove="NewFolder\**" />
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\EnumerableExtensions.cs" Link="Roslyn\Utilities\EnumerableExtensions.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\IReadOnlySet.cs" Link="Roslyn\Utilities\IReadOnlySet.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.cs" Link="Roslyn\Utilities\SpecializedCollections.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Collection.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Collection.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Dictionary.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Dictionary.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerable.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerable.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerator.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerator.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerator`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerator`1.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.List.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.List.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Set.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Set.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Collection.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Collection.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Enumerable`1.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Enumerable`1.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Enumerable`2.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Enumerable`2.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Set.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Set.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Singleton.Collection`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Singleton.Collection`1.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Singleton.Enumerator`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Singleton.Enumerator`1.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Argument.cs" Link="CommandLine\Argument.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentCommand.cs" Link="CommandLine\ArgumentCommand.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentCommand_1.cs" Link="CommandLine\ArgumentCommand_1.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentLexer.cs" Link="CommandLine\ArgumentLexer.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentList_1.cs" Link="CommandLine\ArgumentList_1.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentParser.cs" Link="CommandLine\ArgumentParser.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentSyntax.cs" Link="CommandLine\ArgumentSyntax.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentSyntaxException.cs" Link="CommandLine\ArgumentSyntaxException.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentSyntax_Definers.cs" Link="CommandLine\ArgumentSyntax_Definers.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentToken.cs" Link="CommandLine\ArgumentToken.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Argument_1.cs" Link="CommandLine\Argument_1.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Enumerable.cs" Link="CommandLine\Enumerable.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\HelpTextGenerator.cs" Link="CommandLine\HelpTextGenerator.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Strings.Designer.cs" Link="CommandLine\Strings.Designer.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\Collections\ArrayBuilderExtensions.cs" Link="Roslyn\Collections\ArrayBuilderExtensions.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\Collections\ImmutableArrayExtensions.cs" Link="Roslyn\Collections\ImmutableArrayExtensions.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\Debug.cs" Link="Roslyn\Utilities\Debug.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\ExceptionUtilities.cs" Link="Roslyn\Utilities\ExceptionUtilities.cs">
+			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+		</Compile>
+	</ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\EnumerableExtensions.cs" Link="Roslyn\Utilities\EnumerableExtensions.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\IReadOnlySet.cs" Link="Roslyn\Utilities\IReadOnlySet.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\NullableAttributes.cs" Link="Roslyn\Utilities\NullableAttributes.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.cs" Link="Roslyn\Utilities\SpecializedCollections.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Collection.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Collection.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Dictionary.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Dictionary.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerable.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerable.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerator.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerator.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerator`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerator`1.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.List.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.List.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Set.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Set.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Collection.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Collection.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Enumerable`1.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Enumerable`1.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Enumerable`2.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Enumerable`2.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Set.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Set.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Singleton.Collection`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Singleton.Collection`1.cs" />
-    <Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Singleton.Enumerator`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Singleton.Enumerator`1.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Argument.cs" Link="CommandLine\Argument.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentCommand.cs" Link="CommandLine\ArgumentCommand.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentCommand_1.cs" Link="CommandLine\ArgumentCommand_1.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentLexer.cs" Link="CommandLine\ArgumentLexer.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentList_1.cs" Link="CommandLine\ArgumentList_1.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentParser.cs" Link="CommandLine\ArgumentParser.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentSyntax.cs" Link="CommandLine\ArgumentSyntax.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentSyntaxException.cs" Link="CommandLine\ArgumentSyntaxException.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentSyntax_Definers.cs" Link="CommandLine\ArgumentSyntax_Definers.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\ArgumentToken.cs" Link="CommandLine\ArgumentToken.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Argument_1.cs" Link="CommandLine\Argument_1.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Enumerable.cs" Link="CommandLine\Enumerable.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\HelpTextGenerator.cs" Link="CommandLine\HelpTextGenerator.cs" />
-    <Compile Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Strings.Designer.cs" Link="CommandLine\Strings.Designer.cs" />
-    <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\Collections\ArrayBuilderExtensions.cs" Link="Roslyn\Collections\ArrayBuilderExtensions.cs" />
-    <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\Collections\ImmutableArrayExtensions.cs" Link="Roslyn\Collections\ImmutableArrayExtensions.cs" />
-    <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\Debug.cs" Link="Roslyn\Utilities\Debug.cs" />
-    <Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\ExceptionUtilities.cs" Link="Roslyn\Utilities\ExceptionUtilities.cs" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CSharp" Version="$(MicrosoftCSharpPackageVersion)" />
+		<PackageReference Include="Microsoft.Build" Version="$(MicrosoftBuildPackageVersion)" />
+		<PackageReference Include="Xunit" Version="$(XunitPackageVersion)" />
+		<PackageReference Include="Xunit.runner.visualstudio" Version="2.4.1">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="CG.Pluralization" Version="0.3000.12" PrivateAssets="none" />
+		<PackageReference Include="System.Runtime.Serialization.Formatters" Version="4.3.0" />
+		<PackageReference Include="Divergic.Logging.Xunit" Version="$(DivergicLoggingXunitPackageVersion)" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.CSharp" Version="4.6.0" />
-    <PackageReference Include="Microsoft.Build" Version="16.3.0" />
-    <PackageReference Include="Xunit" Version="2.4.1" />
-    <PackageReference Include="Xunit.runner.visualstudio" Version="2.4.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.3.0" />
-    <PackageReference Include="CG.Pluralization" Version="0.3000.12" PrivateAssets="none" />
-    <PackageReference Include="System.Runtime.Serialization.Formatters" Version="4.3.0" />
-    <PackageReference Include="Divergic.Logging.Xunit" Version="3.1.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<EmbeddedResource Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Strings.resx" Link="CommandLine\Strings.resx" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="..\CodeGeneration.Roslyn.Tool\CommandLine\Strings.resx" Link="CommandLine\Strings.resx" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\CodeGeneration.Chorus\CodeGeneration.Chorus.csproj" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\CodeGeneration.Chorus\CodeGeneration.Chorus.csproj" />
-  </ItemGroup>
+	<ItemGroup Condition=" !$(UseRoslynSource) ">
+		<PackageReference Include="Microsoft.CodeAnalysis" Version="[$(MicrosoftCodeAnalysisPackageVersion)]" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[$(MicrosoftCodeAnalysisCSharpPackageVersion)]" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="[$(MicrosoftCodeAnalysisCSharpWorkspacesPackageVersion)]" />
+	</ItemGroup>
 
-  <ItemGroup Condition=" !$(UseRoslynSource) ">
-    <PackageReference Include="Microsoft.CodeAnalysis" Version="[$(RoslynNugetVersion)]" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[$(RoslynNugetVersion)]" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="[$(RoslynNugetVersion)]" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" $(UseRoslynSource) ">
-    <ProjectReference Include="..\submodules\roslyn\src\Compilers\Core\Portable\Microsoft.CodeAnalysis.csproj" />
-    <ProjectReference Include="..\submodules\roslyn\src\Compilers\CSharp\Portable\Microsoft.CodeAnalysis.CSharp.csproj" />
-    <ProjectReference Include="..\submodules\roslyn\src\Workspaces\CSharp\Portable\Microsoft.CodeAnalysis.CSharp.Workspaces.csproj" />
-  </ItemGroup>
+	<ItemGroup Condition=" $(UseRoslynSource) ">
+		<ProjectReference Include="..\submodules\roslyn\src\Compilers\Core\Portable\Microsoft.CodeAnalysis.csproj" />
+		<ProjectReference Include="..\submodules\roslyn\src\Compilers\CSharp\Portable\Microsoft.CodeAnalysis.CSharp.csproj" />
+		<ProjectReference Include="..\submodules\roslyn\src\Workspaces\CSharp\Portable\Microsoft.CodeAnalysis.CSharp.Workspaces.csproj" />
+	</ItemGroup>
 
 
 
-  <ItemGroup>
-    <Folder Include="CommandLine\xlf\" />
-    <Folder Include="Roslyn\Collections\" />
-    <Folder Include="Roslyn\Utilities\" />
-  </ItemGroup>
+	<ItemGroup>
+		<Folder Include="CommandLine\xlf\" />
+		<Folder Include="Roslyn\Collections\" />
+		<Folder Include="Roslyn\Utilities\" />
+	</ItemGroup>
 
-  <Import Project="..\submodules\roslyn\src\Compilers\CSharp\CSharpAnalyzerDriver\CSharpAnalyzerDriver.projitems" Label="Shared" />
+	<Import Project="..\submodules\roslyn\src\Compilers\CSharp\CSharpAnalyzerDriver\CSharpAnalyzerDriver.projitems" Label="Shared" />
 
-  <Import Project="..\submodules\roslyn\src\Dependencies\PooledObjects\Microsoft.CodeAnalysis.PooledObjects.projitems" Label="Shared" />
+	<Import Project="..\submodules\roslyn\src\Dependencies\PooledObjects\Microsoft.CodeAnalysis.PooledObjects.projitems" Label="Shared" />
 
-  <Import Project="..\submodules\roslyn\src\Compilers\Core\AnalyzerDriver\AnalyzerDriver.projitems" Label="Shared" />
+	<Import Project="..\submodules\roslyn\src\Compilers\Core\AnalyzerDriver\AnalyzerDriver.projitems" Label="Shared" />
 
-  <ItemGroup>
-    <AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.LegacyThreadSwitchingMembers.txt" />
-  </ItemGroup>
+	<ItemGroup>
+		<AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.LegacyThreadSwitchingMembers.txt" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
-  </ItemGroup>
+	<ItemGroup>
+		<AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.MainThreadSwitchingMethods.txt" />
-  </ItemGroup>
+	<ItemGroup>
+		<AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.MainThreadSwitchingMethods.txt" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.MainThreadAssertingMethods.txt" />
-  </ItemGroup>
+	<ItemGroup>
+		<AdditionalFiles Remove="C:\Users\RichardFuoco\.nuget\packages\microsoft.visualstudio.threading.analyzers\16.4.16\build\AdditionalFiles\vs-threading.MainThreadAssertingMethods.txt" />
+	</ItemGroup>
 
 
 </Project>

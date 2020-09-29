@@ -1,0 +1,16 @@
+{
+  "sdk": {
+    "version": "3.1.402"
+  },
+  "tools": {
+    "dotnet": "3.1.402",
+    "runtimes": {
+      "dotnet": [
+        "3.1.7"
+      ]
+    }
+  },
+  "msbuild-sdks": {
+    "Microsoft.Build.NoTargets": "1.0.85"
+  }
+}

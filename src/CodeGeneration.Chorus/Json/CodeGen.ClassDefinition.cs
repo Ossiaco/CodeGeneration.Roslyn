@@ -1,6 +1,7 @@
 ﻿//------------------------------------------------------------
 // Copyright (c) Ossiaco Inc. All rights reserved.
 //------------------------------------------------------------
+#nullable enable
 
 namespace CodeGeneration.Chorus.Json
 {
@@ -18,13 +19,13 @@ namespace CodeGeneration.Chorus.Json
     {
         private static readonly BaseExpressionSyntax _baseExpression = BaseExpression(Token(SyntaxKind.BaseKeyword));
 
-        public static FieldDeclarationSyntax CreateConstMember(TypedConstant constant, string name)
+        public static FieldDeclarationSyntax? CreateConstMember(TypedConstant constant, string name)
         {
             if (constant.Kind != TypedConstantKind.Error)
             {
                 var syntax = constant.Type.GetFullyQualifiedSymbolName(NullableAnnotation.None);
                 var value = Syntax.Generator.TypedConstantExpression(constant);
-                if (value is ExpressionSyntax expr)
+                if (syntax != null && value is ExpressionSyntax expr)
                 {
                     return FieldDeclaration(
                     VariableDeclaration(syntax)
@@ -133,7 +134,7 @@ namespace CodeGeneration.Chorus.Json
 
         }
 
-        private TupleExpressionSyntax GetAsTuple(ImmutableHashSet<MetaProperty> properties, ExpressionSyntax expreession = null)
+        private TupleExpressionSyntax GetAsTuple(ImmutableHashSet<MetaProperty> properties, ExpressionSyntax? expreession = null)
         {
             expreession = expreession ?? ThisExpression();
 
@@ -148,7 +149,7 @@ namespace CodeGeneration.Chorus.Json
             return TupleExpression().AddArguments(arguments.ToArray());
         }
 
-        private async Task<ConstructorInitializerSyntax> GetBaseAssignmentListAsync(Func<MetaProperty, bool> isRequired)
+        private async Task<ConstructorInitializerSyntax?> GetBaseAssignmentListAsync(Func<MetaProperty, bool> isRequired)
         {
             var props = await this.metaType.GetInheritedPropertiesAsync();
             if (props.Count > 0)

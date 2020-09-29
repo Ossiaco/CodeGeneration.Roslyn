@@ -20,7 +20,7 @@
 
         private readonly MetaType metaType;
         private readonly ITransformationContext context;
-        public CodeGen (MetaType metaType, ITransformationContext transformationContext)
+        public CodeGen(MetaType metaType, ITransformationContext transformationContext)
         {
             this.metaType = metaType;
             this.context = transformationContext;
@@ -39,8 +39,8 @@
         private static bool IsPartialImplementationOfInterface(MetaType m, MetaType metaType)
         {
             return m.IsPartialClass
-                && m.TypeSymbol.Interfaces.Any(i => i.Equals(metaType.TypeSymbol))
-                && m.TypeSymbol.ContainingNamespace.Equals(metaType.TypeSymbol.ContainingNamespace);
+                && m.TypeSymbol.Interfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, metaType.TypeSymbol))
+                && SymbolEqualityComparer.Default.Equals(m.TypeSymbol.ContainingNamespace, metaType.TypeSymbol.ContainingNamespace);
         }
 
         internal async Task<ImmutableArray<MemberDeclarationSyntax>> GenerateAsync()

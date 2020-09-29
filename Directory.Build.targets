@@ -1,0 +1,12 @@
+<Project>
+  <Import Project="eng\Imports.targets" />
+
+  <PropertyGroup>
+    <RuntimeIdentifier Condition=" '$(TargetFramework)' == 'netcoreapp3.1' ">win7-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(UseCodeAnalyzers)' == 'True' ">
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="$(MicrosoftCodeAnalysisFxCopAnalyzersPackageVersion)" />
+  </ItemGroup>
+
+</Project>

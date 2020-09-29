@@ -1,0 +1,53 @@
+<Project>
+	<Import Project="eng\Settings.props" />
+
+	<PropertyGroup Label="Metadata">
+    <Authors>Ossiaco</Authors>
+    <Company>Ossiaco</Company>
+    <Copyright>Copyright © Ossiaco Inc.</Copyright>
+    <LicenseExpression>MS-PL</LicenseExpression>
+    <PackageProjectUrl>https://github.com/aarnott/CodeGeneration.Roslyn</PackageProjectUrl>
+	<RepositoryUrl>https://github.com/Ossiaco/CodeGeneration.Roslyn</RepositoryUrl>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <LangVersion>Latest</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <WarningsAsErrors Condition=" '$(Configuration)' == Release ">true</WarningsAsErrors>
+    <IsTestingOnlyProject>$(MSBuildProjectName.Contains('Test'))</IsTestingOnlyProject>
+    <UseRoslynSource>False</UseRoslynSource>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" !$(IsTestingOnlyProject) ">
+    <SignAssembly>False</SignAssembly>
+    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)/CodeGeneration.Roslyn.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" $(IsTestingOnlyProject) ">
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <IsPackable>false</IsPackable>
+    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)CodeGeneration.Roslyn.Tests.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
+  <PropertyGroup Label="SourceLink">
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="$(MicrosoftSourceLinkGitHubPackageVersion)" PrivateAssets="All"/>
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="$(MicrosoftVisualStudioThreadingAnalyzersPackageVersion)" PrivateAssets="All" />
+    <PackageReference Include="StyleCop.Analyzers" Version="$(StyleCopAnalyzersPackageVersion)" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json">
+      <Visible>false</Visible>
+    </AdditionalFiles>
+  </ItemGroup>
+
+</Project>

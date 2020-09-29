@@ -6,6 +6,7 @@ namespace CodeGeneration.Roslyn.Generate
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Reflection;
     using System.Threading.Tasks;
     using CodeGeneration.Chorus;
     using CodeGeneration.Roslyn.Tool.CommandLine;
@@ -15,7 +16,7 @@ namespace CodeGeneration.Roslyn.Generate
     {
         private static async Task<int> Main(string[] args)
         {
-            if(args.Length == 1)
+            if (args.Length == 1)
             {
                 if (File.Exists(args[0]))
                 {
@@ -30,10 +31,10 @@ namespace CodeGeneration.Roslyn.Generate
             string generatedCompileItemFile = null;
             string outputDirectory = null;
             string projectDir = null;
-            var version = false;
+            var hasVersion = false;
             ArgumentSyntax.Parse(args, syntax =>
             {
-                syntax.DefineOption("version", ref version, "Show version of this tool (and exits).");
+                syntax.DefineOption("version", ref hasVersion, "Show version of this tool (and exits).");
                 syntax.DefineOptionList("r|reference", ref refs, "Paths to assemblies being referenced");
                 syntax.DefineOptionList("d|define", ref preprocessorSymbols, "Preprocessor symbols");
                 syntax.DefineOptionList("generatorSearchPath", ref generatorSearchPaths, "Paths to folders that may contain generator assemblies");
@@ -43,9 +44,13 @@ namespace CodeGeneration.Roslyn.Generate
                 syntax.DefineParameterList("compile", ref compile, "Source files included in compilation");
             });
 
-            if (version)
+            if (hasVersion)
             {
-                Console.WriteLine(ThisAssembly.AssemblyInformationalVersion);
+                var attribute = (AssemblyInformationalVersionAttribute)typeof(Program).Assembly
+                  .GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false).FirstOrDefault();
+
+                if (attribute != null)
+                    Console.WriteLine(attribute.InformationalVersion);
                 return 0;
             }
             if (!compile.Any())

@@ -1,0 +1,21 @@
+﻿{
+  "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
+  "settings": {
+    "documentationRules": {
+      "companyName": "Ossiaco",
+      "documentInternalElements": false,
+      "documentInterfaces": false,
+      "xmlHeader": false,
+      "copyrightText": "{decoration}\r\nCopyright (c) Ossiaco Inc. All rights reserved.\r\n{decoration}",
+      "variables": {
+        "decoration": "------------------------------------------------------------"
+      }
+    },
+    "readabilityRules": {
+      "allowBuiltInTypeAliases": false
+    },
+    "orderingRules": {
+      "systemUsingDirectivesFirst": true
+    }
+  }
+}

@@ -1,6 +1,7 @@
 ﻿//------------------------------------------------------------
 // Copyright (c) Ossiaco Inc. All rights reserved.
 //------------------------------------------------------------
+#nullable enable
 
 namespace CodeGeneration.Chorus
 {
@@ -51,7 +52,7 @@ namespace CodeGeneration.Chorus
         /// <param name="logLevel">Level with which it'll be logged, may impact build result.</param>
         /// <param name="message">Message to log.</param>
         /// <param name="diagnosticCode">Diagnostic code to prepend message with.</param>
-        public static void Log(LogLevel logLevel, string message, string diagnosticCode = null)
+        public static void Log(LogLevel logLevel, string message, string? diagnosticCode = null)
         {
             // Prefix every Line with loglevel
             var begin = 0;

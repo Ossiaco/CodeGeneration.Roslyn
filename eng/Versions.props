@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<PropertyGroup>
+		<VersionPrefix>1.0.0</VersionPrefix>
+		<PreReleaseVersionLabel>prerelease</PreReleaseVersionLabel>
+		<UseCodeAnalyzers>False</UseCodeAnalyzers>
+	</PropertyGroup>
+
+	<PropertyGroup Label="AspNetCore Specific deppendencies">
+		<netcoreappVersion>netcoreapp3.1</netcoreappVersion>
+		<netstandardVersion>netstandard2.1</netstandardVersion>
+		<dotnetversion>net472</dotnetversion>
+	</PropertyGroup>
+
+	<PropertyGroup Label="RestoreSources">
+		<RestoreSources>
+			$(RestoreSources);
+			https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json
+			https://pkgs.dev.azure.com/ossiaco/ossiaco/_packaging/chorus_dev/nuget/v3/index.json
+			https://dotnetfeed.blob.core.windows.net/dotnet-core/index.json;
+			https://www.myget.org/F/aad-clients-nightly/api/v3/index.json;
+		</RestoreSources>
+	</PropertyGroup>
+
+	<PropertyGroup Label="Code Analyzers and Generators">
+		<CodeGenPackageVersionVersion>0.7.2-g00d4a38077</CodeGenPackageVersionVersion>
+		<CodeGenBuildTimePackageVersionVersion>0.6.101-g1fea40ec38</CodeGenBuildTimePackageVersionVersion>
+		<MicrosoftCSharpPackageVersion>4.7.0</MicrosoftCSharpPackageVersion>
+		<MicrosoftCodeAnalysisPackageVersion>3.7.0</MicrosoftCodeAnalysisPackageVersion>
+		<MicrosoftCodeAnalysisCSharpPackageVersion>3.7.0</MicrosoftCodeAnalysisCSharpPackageVersion>
+		<MicrosoftCodeAnalysisCSharpWorkspacesPackageVersion>3.7.0</MicrosoftCodeAnalysisCSharpWorkspacesPackageVersion>
+		<MicrosoftCodeAnalysisFxCopAnalyzersPackageVersion>2.9.8</MicrosoftCodeAnalysisFxCopAnalyzersPackageVersion>
+		<InternalAspNetCoreAnalyzersPackageVersion>3.0.0-rc1.19456.10</InternalAspNetCoreAnalyzersPackageVersion>
+		<StyleCopAnalyzersPackageVersion>1.2.0-beta.205</StyleCopAnalyzersPackageVersion>
+		<MicrosoftVisualStudioThreadingAnalyzersPackageVersion>16.7.56</MicrosoftVisualStudioThreadingAnalyzersPackageVersion>
+		<IDisposableAnalyzersPackageVersion>3.4.1</IDisposableAnalyzersPackageVersion>
+		<MicrosoftAzureManagementFluentPackageVersion>1.22.2</MicrosoftAzureManagementFluentPackageVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Label="Build Specific deppendencies">
+		<MicrosoftBuildPackageVersion>16.6.0</MicrosoftBuildPackageVersion>
+		<MicrosoftVisualStudioValidationPackageVersion>15.5.31</MicrosoftVisualStudioValidationPackageVersion>
+		<MicrosoftExtensionsDependencyModelPackageVersion>3.0.0</MicrosoftExtensionsDependencyModelPackageVersion>
+		<MicrosoftBuildFrameworkPackageVersion>15.7.179</MicrosoftBuildFrameworkPackageVersion>
+		<MicrosoftBuildTasksCorePackageVersion>15.7.179</MicrosoftBuildTasksCorePackageVersion>
+		<MicrosoftBuildUtilitiesCorePackageVersion>15.7.179</MicrosoftBuildUtilitiesCorePackageVersion>
+		<MicrosoftBuildLocatorPackageVersion>1.2.2</MicrosoftBuildLocatorPackageVersion>
+		<CoverletCollectorVersion>1.3.0</CoverletCollectorVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Label="Auth and Security Specific Dependencies">
+		<MicrosoftIdentityClientPackageVersion>4.15.0</MicrosoftIdentityClientPackageVersion>
+		<MicrosoftGraphBetaPackageVersion>0.12.0-preview</MicrosoftGraphBetaPackageVersion>
+		<MicrosoftIdentityModelProtocolsOpenIdConnectPackageVersion>5.5.0</MicrosoftIdentityModelProtocolsOpenIdConnectPackageVersion>
+		<SystemIdentityModelTokensJwtPackageVersion>5.6.0</SystemIdentityModelTokensJwtPackageVersion>
+		<SystemIdentityModelTokensPackageVersion>5.6.0</SystemIdentityModelTokensPackageVersion>
+		<MicrosoftIdentityClientExtensionsMsalPackageVersion>2.12.0</MicrosoftIdentityClientExtensionsMsalPackageVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Label="Powershell Specifc Dependencies">
+		<PowerShellStandardPackageVersion>5.1.0</PowerShellStandardPackageVersion>
+	</PropertyGroup>
+
+
+	<PropertyGroup Label="NetCore Specific dependencies">
+		<extensionsVersion>3.1.5</extensionsVersion>
+		<MicrosoftExtensionsCachingAbstractionsPackageVersion>$(extensionsVersion)</MicrosoftExtensionsCachingAbstractionsPackageVersion>
+		<MicrosoftExtensionsCachingMemoryPackageVersion>$(extensionsVersion)</MicrosoftExtensionsCachingMemoryPackageVersion>
+		<MicrosoftExtensionsConfigurationAbstractionsPackageVersion>$(extensionsVersion)</MicrosoftExtensionsConfigurationAbstractionsPackageVersion>
+		<MicrosoftExtensionsConfigurationAzureKeyVaultPackageVersion>$(extensionsVersion)</MicrosoftExtensionsConfigurationAzureKeyVaultPackageVersion>
+		<MicrosoftExtensionsConfigurationCommandLinePackageVersion>$(extensionsVersion)</MicrosoftExtensionsConfigurationCommandLinePackageVersion>
+		<MicrosoftExtensionsConfigurationEnvironmentVariablesPackageVersion>$(extensionsVersion)</MicrosoftExtensionsConfigurationEnvironmentVariablesPackageVersion>
+		<MicrosoftExtensionsConfigurationFileExtensionsPackageVersion>$(extensionsVersion)</MicrosoftExtensionsConfigurationFileExtensionsPackageVersion>
+		<MicrosoftExtensionsConfigurationJsonPackageVersion>$(extensionsVersion)</MicrosoftExtensionsConfigurationJsonPackageVersion>
+		<MicrosoftExtensionsConfigurationPackageVersion>$(extensionsVersion)</MicrosoftExtensionsConfigurationPackageVersion>
+		<MicrosoftExtensionsDependencyModelPackageVersion>$(extensionsVersion)</MicrosoftExtensionsDependencyModelPackageVersion>
+		<MicrosoftExtensionsDependencyInjectionPackageVersion>$(extensionsVersion)</MicrosoftExtensionsDependencyInjectionPackageVersion>
+		<MicrosoftExtensionsHostingPackageVersion>$(extensionsVersion)</MicrosoftExtensionsHostingPackageVersion>
+		<MicrosoftExtensionsHostingAbstractionsPackageVersion>$(extensionsVersion)</MicrosoftExtensionsHostingAbstractionsPackageVersion>
+		<MicrosoftExtensionsLoggingAbstractionsPackageVersion>$(extensionsVersion)</MicrosoftExtensionsLoggingAbstractionsPackageVersion>
+		<MicrosoftExtensionsLoggingConfigurationPackageVersion>$(extensionsVersion)</MicrosoftExtensionsLoggingConfigurationPackageVersion>
+		<MicrosoftExtensionsLoggingDebugPackageVersion>$(extensionsVersion)</MicrosoftExtensionsLoggingDebugPackageVersion>
+		<MicrosoftExtensionsLoggingPackageVersion>$(extensionsVersion)</MicrosoftExtensionsLoggingPackageVersion>
+		<MicrosoftExtensionsOptionsConfigurationExtensionsPackageVersion>$(extensionsVersion)</MicrosoftExtensionsOptionsConfigurationExtensionsPackageVersion>
+		<MicrosoftExtensionsOptionsPackageVersion>$(extensionsVersion)</MicrosoftExtensionsOptionsPackageVersion>
+		<MicrosoftExtensionsLoggingApplicationInsightsPackageVersion>2.11.0</MicrosoftExtensionsLoggingApplicationInsightsPackageVersion>
+		<MicrosoftExtensionsHttpPackageVersion>$(extensionsVersion)</MicrosoftExtensionsHttpPackageVersion>
+		<PollyPackageVersion>7.2.1</PollyPackageVersion>
+		<MicrosoftExtensionsHttpPollyPackageVersion>$(extensionsVersion)</MicrosoftExtensionsHttpPollyPackageVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Label="Testing Specific Dependencies">
+		<MoqPackageVersion>4.14.1</MoqPackageVersion>
+		<XunitPackageVersion>2.4.1</XunitPackageVersion>
+		<XunitAssertPackageVersion>2.4.1</XunitAssertPackageVersion>
+		<MicrosoftExtensionsLoggingTestingPackageVersion>3.0.0-rc2.19463.5</MicrosoftExtensionsLoggingTestingPackageVersion>
+		<XunitPriorityPackageVersion>1.1.6</XunitPriorityPackageVersion>
+		<DivergicLoggingXunitPackageVersion>3.5.0</DivergicLoggingXunitPackageVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Label="Specific System Versions">
+		<CGPluralizationPackageVersion>0.3000.12</CGPluralizationPackageVersion>
+		<SystemCollectionsImmutablePackageVersion>1.8.0-alpha1.19455.4</SystemCollectionsImmutablePackageVersion>
+		<SystemComponentModelAnnotationsPackageVersion>4.6.0</SystemComponentModelAnnotationsPackageVersion>
+		<SystemRuntimeLoaderPackageVersion>4.3.0</SystemRuntimeLoaderPackageVersion>
+		<SystemComponentModelCompositionPackageVersion>4.6.0</SystemComponentModelCompositionPackageVersion>
+		<SystemMemoryPackageVersion>4.5.4</SystemMemoryPackageVersion>
+		<SystemReactivePackageVersion>4.4.1</SystemReactivePackageVersion>
+		<SystemRuntimePackageVersion>4.3.1</SystemRuntimePackageVersion>
+		<SystemRuntimeInteropServicesPackageVersion>4.3.0</SystemRuntimeInteropServicesPackageVersion>
+		<SystemTextJsonPackageVersion>4.7.2</SystemTextJsonPackageVersion>
+		<SystemBuffersPackageVersion>4.5.1</SystemBuffersPackageVersion>
+		<SystemInteractiveAsyncPackageVersion>4.0.0</SystemInteractiveAsyncPackageVersion>
+		<SystemThreadingTasksPackageVersion>4.3.0</SystemThreadingTasksPackageVersion>
+		<SystemIOFileSystemAccessControlPackageVersion>4.7.0</SystemIOFileSystemAccessControlPackageVersion>
+		<SystemIOPipelinesPackageVersion>4.7.2</SystemIOPipelinesPackageVersion>
+		<SystemSecurityCryptographyCngPackageVersion>4.7.0</SystemSecurityCryptographyCngPackageVersion>
+		<MicrosoftSourceLinkGitHubPackageVersion>1.0.0</MicrosoftSourceLinkGitHubPackageVersion>
+		<ValidationPackageVersion>2.4.22</ValidationPackageVersion>
+	</PropertyGroup>
+
+</Project>

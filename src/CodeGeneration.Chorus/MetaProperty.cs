@@ -1,17 +1,19 @@
 ﻿//------------------------------------------------------------
 // Copyright (c) Ossiaco Inc. All rights reserved.
 //------------------------------------------------------------
+#nullable enable
 
 namespace CodeGeneration.Chorus
 {
-    using Microsoft.CodeAnalysis;
-    using Microsoft.CodeAnalysis.CSharp;
-    using Microsoft.CodeAnalysis.CSharp.Syntax;
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Diagnostics;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Text.Json.Serialization;
+    using Microsoft.CodeAnalysis;
+    using Microsoft.CodeAnalysis.CSharp;
+    using Microsoft.CodeAnalysis.CSharp.Syntax;
     using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
     [DebuggerDisplay("{Symbol?.Name}")]
@@ -21,9 +23,9 @@ namespace CodeGeneration.Chorus
 
         public static IEqualityComparer<MetaProperty> DefaultNameTypeComparer = new NameTypeComparer();
 
-        private TypeSyntax _elementTypeSyntax;
+        private TypeSyntax? _elementTypeSyntax;
 
-        private TypeSyntax _typeSyntax;
+        private TypeSyntax? _typeSyntax;
 
         public MetaProperty(MetaType type, IPropertySymbol symbol)
         {
@@ -39,13 +41,13 @@ namespace CodeGeneration.Chorus
             IsJsonSerializeable = IsElementTypeAssignableFrom(type.TransformationContext.JsonSerializeableType);
         }
 
-        public ITypeSymbol ElementKeyType => GetDictionaryType(Symbol.Type)?.TypeArguments[0];
+        public ITypeSymbol? ElementKeyType => GetDictionaryType(Symbol.Type)?.TypeArguments[0];
 
         public ITypeSymbol ElementType { get; }
 
-        public TypeSyntax ElementTypeSyntax => _elementTypeSyntax ?? (_elementTypeSyntax = ElementType.GetFullyQualifiedSymbolName((Symbol as IArrayTypeSymbol)?.ElementNullableAnnotation ?? NullableAnnotation.None));
+        public TypeSyntax? ElementTypeSyntax => _elementTypeSyntax ?? (_elementTypeSyntax = ElementType.GetFullyQualifiedSymbolName((Symbol as IArrayTypeSymbol)?.ElementNullableAnnotation ?? NullableAnnotation.None));
 
-        public ITypeSymbol ElementValueType => GetDictionaryType(Symbol.Type)?.TypeArguments[1];
+        public ITypeSymbol? ElementValueType => GetDictionaryType(Symbol.Type)?.TypeArguments[1];
 
         public bool HasSetMethod => Symbol.SetMethod != null;
 
@@ -103,12 +105,12 @@ namespace CodeGeneration.Chorus
         {
             get
             {
-                var jsonAttribute = Symbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass.IsOrDerivesFrom<JsonPropertyNameAttribute>());
+                var jsonAttribute = Symbol?.GetAttributes().FirstOrDefault(a => a.AttributeClass?.IsOrDerivesFrom<JsonPropertyNameAttribute>() ?? false);
                 if (jsonAttribute != null)
                 {
                     return jsonAttribute.ConstructorArguments[0].ToCSharpString();
                 }
-                return $"\"{Symbol.Name.ToCamelCase()}\"";
+                return $"\"{Symbol?.Name.ToCamelCase()}\"";
 
             }
         }
@@ -151,17 +153,17 @@ namespace CodeGeneration.Chorus
             }
         }
 
-        public ITypeSymbol SafeType => GetSafePropertyType(Symbol?.Type);
+        public ITypeSymbol? SafeType => GetSafePropertyType(Symbol.Type);
 
         public IPropertySymbol Symbol { get; }
 
-        public ITypeSymbol Type => Symbol?.Type;
+        public ITypeSymbol Type => Symbol.Type;
 
         public string TypeClassName => GetSafeTypeClassName(GetSafePropertyType(Symbol.Type));
 
         public string TypeName => GetSafeTypeName(Symbol.Type);
 
-        public TypeSyntax TypeSyntax => _typeSyntax ?? (_typeSyntax = Type.GetFullyQualifiedSymbolName(Symbol.NullableAnnotation));
+        public TypeSyntax TypeSyntax => _typeSyntax ??= Type.GetFullyQualifiedSymbolName(Symbol.NullableAnnotation);
 
         public PropertyDeclarationSyntax ArrowPropertyDeclarationSyntax(ExpressionSyntax valueSyntax)
         {
@@ -213,10 +215,10 @@ namespace CodeGeneration.Chorus
             var that = this;
             return SymbolEqualityComparer.Default.Equals(type, ElementType)
                 || ElementType.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(type, i))
-                || IsAssignableFrom(type.BaseType);
+                || (type.BaseType != null && IsAssignableFrom(type.BaseType));
         }
 
-        private static ITypeSymbol GetCollectionType(ITypeSymbol type)
+        private static ITypeSymbol? GetCollectionType(ITypeSymbol? type)
         {
             if (type is IArrayTypeSymbol)
             {
@@ -239,7 +241,7 @@ namespace CodeGeneration.Chorus
             return null;
         }
 
-        private static INamedTypeSymbol GetDictionaryType(ITypeSymbol type)
+        private static INamedTypeSymbol? GetDictionaryType(ITypeSymbol type)
         {
             var namedType = type as INamedTypeSymbol;
             if (namedType != null)
@@ -308,18 +310,16 @@ namespace CodeGeneration.Chorus
 
         private static bool IsDictionaryType(ITypeSymbol type) => GetDictionaryType(type) != null;
 
-        private static bool TryGetCollectionElementType(ITypeSymbol collectionType, out ITypeSymbol elementType)
+        private static bool TryGetCollectionElementType(ITypeSymbol? collectionType, [NotNullWhen(true)] out ITypeSymbol? elementType)
         {
             collectionType = GetCollectionType(collectionType);
-            var arrayType = collectionType as IArrayTypeSymbol;
-            if (arrayType != null)
+            if (collectionType is IArrayTypeSymbol arrayType)
             {
                 elementType = arrayType.ElementType;
                 return true;
             }
 
-            var namedType = collectionType as INamedTypeSymbol;
-            if (namedType != null)
+            if (collectionType is INamedTypeSymbol namedType)
             {
                 if (namedType.IsGenericType && namedType.TypeArguments.Length == 1)
                 {
@@ -336,7 +336,7 @@ namespace CodeGeneration.Chorus
         {
             public bool Equals(MetaProperty x, MetaProperty y)
             {
-                return x.Symbol.Equals(y.Symbol);
+                return SymbolEqualityComparer.Default.Equals(x.Symbol, y.Symbol);
             }
 
             public int GetHashCode(MetaProperty obj)
@@ -349,7 +349,7 @@ namespace CodeGeneration.Chorus
         {
             public bool Equals(MetaProperty x, MetaProperty y)
             {
-                return x.Symbol.Name.Equals(y.Symbol.Name) && x.Symbol.Type.Equals(y.Symbol.Type);
+                return x.Symbol.Name.Equals(y.Symbol.Name) && SymbolEqualityComparer.Default.Equals(x.Symbol.Type, y.Symbol.Type);
             }
 
             public int GetHashCode(MetaProperty obj)

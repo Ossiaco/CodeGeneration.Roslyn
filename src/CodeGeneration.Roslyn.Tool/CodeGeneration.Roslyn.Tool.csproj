@@ -5,9 +5,11 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <AssemblyName>dotnet-codegen</AssemblyName>
-    <Description>The dotnet code generation tool that works with the CodeGeneration.Roslyn nuget package.</Description>
+    <Description>The dotnet code generation tool that works with the CodeGeneration.Chorus nuget package.</Description>
     <CodeAnalysisRuleSet>..\CodeGeneration.Chorus\CodeGeneration.Chorus.ruleset</CodeAnalysisRuleSet>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+	<NullableContextOptions>disable</NullableContextOptions>
+	<Nullable>disable</Nullable>
+	<NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,16 +26,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
-    <PackageReference Include="CG.Pluralization" Version="0.3000.12" />
+    <PackageReference Include="System.Runtime.Loader" Version="$(SystemRuntimeLoaderPackageVersion)" />
+    <PackageReference Include="CG.Pluralization" Version="$(CGPluralizationPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CodeGeneration.Chorus\CodeGeneration.Chorus.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Update="Nerdbank.GitVersioning" Version="3.0.26" />
   </ItemGroup>
 
 </Project>

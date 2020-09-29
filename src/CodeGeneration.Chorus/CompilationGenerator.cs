@@ -1,6 +1,7 @@
 ﻿//------------------------------------------------------------
 // Copyright (c) Ossiaco Inc. All rights reserved.
 //------------------------------------------------------------
+#nullable enable
 
 namespace CodeGeneration.Chorus
 {
@@ -20,7 +21,6 @@ namespace CodeGeneration.Chorus
     using Microsoft.CodeAnalysis.Text;
     using Microsoft.Extensions.DependencyModel;
     using Microsoft.Extensions.DependencyModel.Resolution;
-    using Microsoft.Extensions.Logging;
     using Validation;
 
     internal interface ITransformationContext
@@ -60,18 +60,18 @@ namespace CodeGeneration.Chorus
         private readonly Dictionary<string, Assembly> assembliesByPath = new Dictionary<string, Assembly>();
         private readonly HashSet<string> directoriesWithResolver = new HashSet<string>();
         private readonly List<string> loadedAssemblies = new List<string>();
-        private ImmutableDictionary<INamedTypeSymbol, MetaType> allNamedTypeSymbols;
+        private ImmutableDictionary<INamedTypeSymbol, MetaType>? allNamedTypeSymbols;
         private CompositeCompilationAssemblyResolver assemblyResolver;
-        private CSharpCompilation compilation;
+        private CSharpCompilation? compilation;
         private DependencyContext dependencyContext;
         private ImmutableHashSet<string> generatedFiles = ImmutableHashSet<string>.Empty;
-        private ImmutableHashSet<INamedTypeSymbol> intrinsicSymbols;
-        private INamedTypeSymbol jsonSerializeableType;
-        private INamedTypeSymbol messageType;
-        private IProgress<Diagnostic> progress;
-        private INamedTypeSymbol responseMessageType;
+        private ImmutableHashSet<INamedTypeSymbol>? intrinsicSymbols;
+        private INamedTypeSymbol? jsonSerializeableType;
+        private INamedTypeSymbol? messageType;
+        private IProgress<Diagnostic>? progress;
+        private INamedTypeSymbol? responseMessageType;
         private int rootLength;
-        private INamedTypeSymbol vertexType;
+        private INamedTypeSymbol? vertexType;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CompilationGenerator"/> class.
@@ -89,25 +89,25 @@ namespace CodeGeneration.Chorus
             loadContext.Resolving += ResolveAssembly;
         }
 
-        ImmutableDictionary<INamedTypeSymbol, MetaType> ITransformationContext.AllNamedTypeSymbols => this.allNamedTypeSymbols;
+        ImmutableDictionary<INamedTypeSymbol, MetaType> ITransformationContext.AllNamedTypeSymbols => this.allNamedTypeSymbols ?? throw new ArgumentNullException(nameof(this.allNamedTypeSymbols));
 
-        CSharpCompilation ITransformationContext.Compilation => this.compilation;
+        CSharpCompilation ITransformationContext.Compilation => this.compilation ?? throw new ArgumentNullException(nameof(this.compilation));
 
-        string ITransformationContext.IntermediateOutputDirectory => this.IntermediateOutputDirectory;
+        string ITransformationContext.IntermediateOutputDirectory => this.IntermediateOutputDirectory ?? throw new ArgumentNullException(nameof(this.IntermediateOutputDirectory));
 
-        ImmutableHashSet<INamedTypeSymbol> ITransformationContext.IntrinsicSymbols => this.intrinsicSymbols;
+        ImmutableHashSet<INamedTypeSymbol> ITransformationContext.IntrinsicSymbols => this.intrinsicSymbols ?? throw new ArgumentNullException(nameof(this.intrinsicSymbols));
 
-        INamedTypeSymbol ITransformationContext.JsonSerializeableType => this.jsonSerializeableType;
+        INamedTypeSymbol ITransformationContext.JsonSerializeableType => this.jsonSerializeableType ?? throw new ArgumentNullException(nameof(this.jsonSerializeableType));
 
-        INamedTypeSymbol ITransformationContext.MessageType => this.messageType;
+        INamedTypeSymbol ITransformationContext.MessageType => this.messageType ?? throw new ArgumentNullException(nameof(this.messageType));
 
-        IProgress<Diagnostic> ITransformationContext.Progress => this.progress;
+        IProgress<Diagnostic> ITransformationContext.Progress => this.progress ?? throw new ArgumentNullException(nameof(this.progress));
 
-        INamedTypeSymbol ITransformationContext.ResponseMessageType => this.responseMessageType;
+        INamedTypeSymbol ITransformationContext.ResponseMessageType => this.responseMessageType ?? throw new ArgumentNullException(nameof(this.responseMessageType));
 
         int ITransformationContext.RootLength => this.rootLength;
 
-        INamedTypeSymbol ITransformationContext.VertexType => this.vertexType;
+        INamedTypeSymbol ITransformationContext.VertexType => this.vertexType ?? throw new ArgumentNullException(nameof(this.vertexType));
 
         /// <summary>
         /// Gets the AdditionalWrittenFiles
@@ -117,12 +117,12 @@ namespace CodeGeneration.Chorus
         /// <summary>
         /// Gets or sets the Compile
         /// </summary>
-        public IReadOnlyList<string> Compile { get; set; }
+        public IReadOnlyList<string>? Compile { get; set; }
 
         /// <summary>
         /// Gets the FormatStrings
         /// </summary>
-        public ImmutableDictionary<INamedTypeSymbol, string> FormatStrings { get; private set; }
+        public ImmutableDictionary<INamedTypeSymbol, string>? FormatStrings { get; private set; }
 
         /// <summary>
         /// Gets the GeneratedFiles
@@ -132,36 +132,35 @@ namespace CodeGeneration.Chorus
         /// <summary>
         /// Gets or sets the GeneratorAssemblySearchPaths
         /// </summary>
-        public IReadOnlyList<string> GeneratorAssemblySearchPaths { get; set; }
+        public IReadOnlyList<string>? GeneratorAssemblySearchPaths { get; set; }
 
         /// <summary>
         /// Gets or sets the IntermediateOutputDirectory
         /// </summary>
-        public string IntermediateOutputDirectory { get; set; }
+        public string? IntermediateOutputDirectory { get; set; }
 
         /// <summary>
         /// Gets or sets the PreprocessorSymbols
         /// </summary>
-        public IEnumerable<string> PreprocessorSymbols { get; set; }
+        public IEnumerable<string>? PreprocessorSymbols { get; set; }
 
         /// <summary>
         /// Gets or sets the ProjectDirectory
         /// </summary>
-        public string ProjectDirectory { get; set; }
+        public string? ProjectDirectory { get; set; }
 
         /// <summary>
         /// Gets or sets the ReferencePath
         /// </summary>
-        public IReadOnlyList<string> ReferencePaths { get; set; }
+        public IReadOnlyList<string>? ReferencePaths { get; set; }
 
         /// <summary>
         /// The GenerateAsync
         /// </summary>
-        /// <param name="logger">The logger.</param>
         /// <param name="progress">The progress<see cref="IProgress{Diagnostic}"/></param>
         /// <param name="cancellationToken">The cancellationToken<see cref="CancellationToken"/></param>
         /// <returns>The <see cref="Task"/></returns>
-        public async Task GenerateAsync(IProgress<Diagnostic> progress = null, CancellationToken cancellationToken = default)
+        public async Task GenerateAsync(IProgress<Diagnostic>? progress = null, CancellationToken cancellationToken = default)
         {
             Verify.Operation(Compile != null, $"{nameof(Compile)} must be set first.");
             Verify.Operation(ReferencePaths != null, $"{nameof(ReferencePaths)} must be set first.");
@@ -184,7 +183,7 @@ namespace CodeGeneration.Chorus
             var assembliesLastModified = GetLastModifiedAssemblyTime(generatorAssemblyInputsFile);
 
             var fileFailures = new List<Exception>();
-            rootLength = ProjectDirectory.Length + 1;
+            rootLength = (ProjectDirectory?.Length ?? 0) + 1;
             allNamedTypeSymbols = await GetAllTypeDefinitionsAsync(compilation);
             var files = allNamedTypeSymbols.Values.GroupBy(t => t.OutputFilePath).Where(t => t.Key != null).ToImmutableDictionary(n => n.Key, n => n.ToImmutableList());
 
@@ -226,7 +225,7 @@ namespace CodeGeneration.Chorus
 
         }
 
-        private static RuntimeLibrary FindMatchingLibrary(IEnumerable<RuntimeLibrary> libraries, AssemblyName name)
+        private static RuntimeLibrary? FindMatchingLibrary(IEnumerable<RuntimeLibrary> libraries, AssemblyName name)
         {
             foreach (var runtime in libraries)
             {
@@ -257,8 +256,10 @@ namespace CodeGeneration.Chorus
                 typeof(string), typeof(Guid), typeof(Uri),
                 typeof(DateTimeOffset)
             };
-            var values = types.Select(t => compilation.GetTypeByMetadataName(t.FullName)).ToList();
-            return values.ToImmutableHashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+
+            var result = ImmutableHashSet.CreateBuilder<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+            result.UnionWith(types.Select(t => compilation.GetTypeByMetadataName(t.FullName)).OfType<INamedTypeSymbol>());
+            return result.ToImmutable();
         }
 
         private static DateTime GetLastModifiedAssemblyTime(string assemblyListPath)
@@ -274,7 +275,7 @@ namespace CodeGeneration.Chorus
             return timestamps.Any() ? timestamps.Max() : DateTime.MinValue;
         }
 
-        private static void ReportError(IProgress<Diagnostic> progress, string id, SyntaxTree inputSyntaxTree, Exception ex)
+        private static void ReportError(IProgress<Diagnostic>? progress, string id, SyntaxTree inputSyntaxTree, Exception ex)
         {
             Console.Error.WriteLine($"Exception in file processing: {ex}");
 
@@ -308,12 +309,14 @@ namespace CodeGeneration.Chorus
 
         private CSharpCompilation CreateCompilation(CancellationToken cancellationToken)
         {
+            var compile = this.Compile ?? throw new ArgumentNullException(nameof(this.Compile));
+
             var compilation = CSharpCompilation.Create("codegen")
                 .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
                 .WithReferences(ReferencePaths.Select(p => MetadataReference.CreateFromFile(p)));
             var parseOptions = new CSharpParseOptions(preprocessorSymbols: PreprocessorSymbols);
 
-            foreach (var sourceFile in Compile)
+            foreach (var sourceFile in compile)
             {
                 using (var stream = File.OpenRead(sourceFile))
                 {
@@ -451,7 +454,7 @@ namespace CodeGeneration.Chorus
             return assembly;
         }
 
-        private Assembly ResolveAssembly(AssemblyLoadContext context, AssemblyName name)
+        private Assembly? ResolveAssembly(AssemblyLoadContext context, AssemblyName name)
         {
             var library = FindMatchingLibrary(dependencyContext.RuntimeLibraries, name);
             if (library == null)
@@ -501,6 +504,10 @@ namespace CodeGeneration.Chorus
             var retriesLeft = 3;
 
             var lastWritten = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
+            if (outputFilePath.Contains("IActorRoleAssignment.generated.cs"))
+            {
+                Console.WriteLine("WTF");
+            }
             var hasChanges = assembliesLastModified > lastWritten || (await HasChangedAsync(metaTypes));
             if (hasChanges)
             {

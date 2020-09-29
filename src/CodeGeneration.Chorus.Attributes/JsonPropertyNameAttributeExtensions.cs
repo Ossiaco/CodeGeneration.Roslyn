@@ -1,13 +1,13 @@
-﻿//------------------------------------------------------------
-// Copyright (c) Ossiaco Inc.  All rights reserved.
-//------------------------------------------------------------
+﻿// ------------------------------------------------------------
+// Copyright (c) Ossiaco Inc. All rights reserved.
+// ------------------------------------------------------------
 
 namespace CodeGeneration.Chorus
 {
     using System.Text.Json.Serialization;
 
     /// <summary>
-    /// Defines the <see cref="JsonPropertyNameAttributeExtensions" />
+    /// Defines the <see cref="JsonPropertyNameAttributeExtensions" />.
     /// </summary>
     public static class JsonPropertyNameAttributeExtensions
     {
