@@ -16,116 +16,203 @@ resources:
     image: andrewarnott/linux-buildagent
 
 jobs:
-- job: Windows
-  pool: Hosted VS2017
-  steps:
-  - task: DotNetCoreInstaller@0
-    displayName: Install/select .NET Core SDK
+- job: create_version
+    displayName: Create Version
+    continueOnError: false
+    pool:
+    vmImage: $(VmImage)
+
+    steps:
+    #versioning must follow https://semver.org/ otherwise msbuild fails
+    #e.g. 3.0.0-1-100, 3.0.0-preview.1-100. Build portion is generated as part of prerelease ('.' separated) because it's being ignored in nuget package version (e.g. +1-100).
+    - checkout: none
+
+    - task: PowerShell@2
+    name: powershell
     inputs:
-      version: '2.1.500'
+        targetType: inline
+        script: |
+        [string] $major = '$(MajorVersion)'
+        [string] $minor = '$(MinorVersion)'
+        [string] $patch = '$(PatchVersion)'
+        [string] $preRelease = '$(PreReleaseVersion)'
+        [string] $buildNumber = '$(Build.BuildId)'
 
-  - script: |
-      dotnet tool install --tool-path . nbgv
-      .\nbgv cloud -p src
-    displayName: Set build number
-    condition: ne(variables['system.pullrequest.isfork'], true)
+        if ([string]::IsNullOrWhiteSpace($major)) {
+            throw "MajorVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
+        }
+        if ([string]::IsNullOrWhiteSpace($minor)) {
+            throw "MinorVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
+        }
+        if ([string]::IsNullOrWhiteSpace($patch)) {
+            throw "PatchVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
+        }
 
-  - script: dotnet --info
-    displayName: Show dotnet SDK info
+        $d1 = '2019-01-01'
+        $d2 = [DateTime]::Today
+        $ts = New-TimeSpan -Start $d1 -End $d2
+        if (![string]::IsNullOrWhiteSpace($preRelease)) {
+            $preRelease = '-{0}.' -f $preRelease.Trim()
+        }
+        $prefix = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
+        $version = '{0}.{1}.{2}{3}{4}-{5}' -f $major.Trim(), $minor.Trim(), $patch.Trim(), $preRelease, $ts.Days, $buildNumber
+        Write-Output ('chorus version prefix: {0}' -f $prefix);
+        Write-Output ('chorus version: {0}' -f $version);
+        Write-Host "##vso[task.setvariable variable=versionPrefix;isOutput=true]$prefix"
+        Write-Host "##vso[task.setvariable variable=buildVersion;isOutput=true]$version"
+
+        failOnStderr: true
+    displayName: Generate Chorus Version
+
+- job: build_chorus_solution
+  displayName: Build Chorus
+  continueOnError: false
+  timeoutInMinutes: 30  
+  pool:
+    vmImage: $(VmImage)
+
+  steps:
+
+  - task: UseDotNet@2
+    inputs:
+      packageType: sdk
+      version: $(netCoreVersion)
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+      includePreviewVersions: true
+      performMultiLevelLookup: true
+
+  - task: AzureKeyVault@1
+    inputs:
+      azureSubscription: DevopsPipeline
+      KeyVaultName: ossiacocivault
+      SecretsFilter: chorusCertificate, httpsCertificate, rootCaCertificate, intermediateCaCertificate, dcbelCertificate
+    displayName: Get secrets from key vault
+
+  - checkout: self 
+    submodules: recursive
+    clean: true
+    lfs: true
 
   - task: DotNetCoreCLI@2
-    displayName: Restore NuGet packages
+    displayName: Build Chorus
     inputs:
-      command: restore
-      verbosityRestore: normal # detailed, normal, minimal
-      projects: src/**/*.sln
-      feedsToUse: config
-      nugetConfigPath: src/nuget.config
+      command: build
+      projects: Chorus.sln
+      arguments: --configuration $(BuildConfiguration) -p:OS=$(OS) -p:FileVersion=$(versionPrefix) -p:Version=$(buildVersion) -m:1 -nowarn:OCC001
 
-  # Use VSBuild on Windows so GitLink will work (it fails on dotnet build)
-  # Also targeting net20, net40, PCLs etc requires full MSBuild
-  - task: VSBuild@1
-    displayName: Build Visual Studio solution
+  - task: PowerShell@2
     inputs:
-      vsVersion: '15.0'
-      solution: src/**/*.sln
-      msbuildArgs: /t:build,pack /m /v:m /bl:"$(Build.ArtifactStagingDirectory)/build_logs/msbuild.binlog"
-      platform: $(BuildPlatform)
-      configuration: $(BuildConfiguration)
+      targetType: inline
+      script: |
+        $chorusCertificateBase64 = '$(chorusCertificate)'
+        $httpsCertificateBase64 = '$(httpsCertificate)'
+        $rootCaCertificateBase64 = '$(rootCaCertificate)'
+        $intermediateCaCertificateBase64 = '$(intermediateCaCertificate)'
+        $dcbelCertificateBase64 = '$(dcbelCertificate)'
+        
+        $chorusCertificateBytes = [System.Convert]::FromBase64String($chorusCertificateBase64)
+        $httpsCertificateBytes = [System.Convert]::FromBase64String($httpsCertificateBase64)
+        $rootCaCertificateBytes = [System.Convert]::FromBase64String($rootCaCertificateBase64)
+        $intermediateCaCertificateBytes = [System.Convert]::FromBase64String($intermediateCaCertificateBase64)
+        $dcbelCertificateBytes = [System.Convert]::FromBase64String($dcbelCertificateBase64)
+        
+        $KeyStorageFlags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bxor [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::MachineKeySet -bxor [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet;
+        $chorusPfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($chorusCertificateBytes,$null,$KeyStorageFlags)
+        $httpsPfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($httpsCertificateBytes,$null,$KeyStorageFlags)
+        $rootCaCertificatePfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($rootCaCertificateBytes,$null,$KeyStorageFlags)
+        $intermediateCaCertificatePfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($intermediateCaCertificateBytes,$null,$KeyStorageFlags)
+        $dcbelCertificatePfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($dcbelCertificateBytes,$null,$KeyStorageFlags)
+        
+        $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("My", "LocalMachine")
+        $store.open("MaxAllowed")
+        $store.add($chorusPfx)
+        $store.add($httpsPfx)
+        $store.add($rootCaCertificatePfx)
+        $store.add($intermediateCaCertificatePfx)
+        $store.add($dcbelCertificatePfx)
+        $store.close()
+        
+        $certificatePath = 'Cert:\LocalMachine\My\' + ($httpsPfx.ThumbPrint)  
+        Export-Certificate -Cert $certificatePath -FilePath '.\localhost.cer'
+        Import-Certificate -FilePath '.\localhost.cer' -CertStoreLocation cert:\LocalMachine\Root
+
+        $certificatePath = 'Cert:\LocalMachine\My\' + ($rootCaCertificatePfx.ThumbPrint)  
+        Export-Certificate -Cert $certificatePath -FilePath '.\rootca.cer'
+        Import-Certificate -FilePath '.\rootca.cer' -CertStoreLocation cert:\LocalMachine\Root
+       
+        $certificatePath = 'Cert:\LocalMachine\My\' + ($intermediateCaCertificatePfx.ThumbPrint)  
+        Export-Certificate -Cert $certificatePath -FilePath '.\intermediateca.cer'
+        Import-Certificate -FilePath '.\intermediateca.cer' -CertStoreLocation cert:\LocalMachine\Root
+
+        Write-Output ('Chorus certificate subject: {0}, Thumbprint {1}' -f $chorusPfx.Subject, $httpsPfx.ThumbPrint);
+        Write-Output ('Chorus HTTPS subject: {0}, Thumbprint {1}' -f $httpsPfx.Subject, $httpsPfx.ThumbPrint);
+        Write-Output ('Chorus root CA subject: {0}, Thumbprint {1}' -f $rootCaCertificatePfx.Subject, $rootCaCertificatePfx.ThumbPrint);
+        Write-Output ('Chorus intermediate CA subject: {0}, Thumbprint {1}' -f $intermediateCaCertificatePfx.Subject, $intermediateCaCertificatePfx.ThumbPrint);
+        Write-Output ('Chorus dcbel device subject: {0}, Thumbprint {1}' -f $dcbelCertificatePfx.Subject, $dcbelCertificatePfx.ThumbPrint);
+       
+      failOnStderr: true
+    displayName: Install Certificates
 
   - task: DotNetCoreCLI@2
-    displayName: Run tests
+    displayName: Chorus Tests
+    inputs: 
+      command: test  
+      projects: src/Chorus/tests/*.csproj
+      arguments: $(TestArguments) --configuration $(BuildConfiguration) /p:OS=$(OS)
+      publishTestResults: true 
+      testRunTitle: Chorus
+    env:
+      ASPNETCORE_ENVIRONMENT: $(Env)
+      DOTNET_ENVIRONMENT: $(Env)
+
+  - task: DotNetCoreCLI@2
+    displayName: Build Chorus Services Configure
     inputs:
-      command: test
-      workingDirectory: src
-      arguments: -v n --no-build -c $(BuildConfiguration)
+      command: build
+      projects: src/Chorus.Services.Configure/src/*.csproj
+      arguments: --configuration $(BuildConfiguration) -p:OS=$(OS) -p:FileVersion=$(versionPrefix) -p:Version=$(buildVersion) -m:1 -nowarn:OCC001
 
-  - task: CopyFiles@1
-    displayName: Collecting project.assets.json artifacts
+  - task: CmdLine@2
+    displayName: Start Azure Storage Emulator
     inputs:
-      Contents: |
-        obj/**/project.assets.json
-      TargetFolder: $(Build.ArtifactStagingDirectory)/projectAssetsJson
-    condition: succeededOrFailed()
+      script: |
+        "%ProgramFiles(x86)%\Microsoft SDKs\Azure\Storage Emulator\AzureStorageEmulator.exe" init /server "(localdb)\MsSqlLocalDb"
+        "%ProgramFiles(x86)%\Microsoft SDKs\Azure\Storage Emulator\AzureStorageEmulator.exe" start
 
-  - task: CopyFiles@1
-    displayName: Collecting deployables
-    inputs:
-      Contents: |
-        bin/**/$(BuildConfiguration)/**/*.nupkg
-      TargetFolder: $(Build.ArtifactStagingDirectory)/deployables
-      flattenFolders: true
+  - template: templates/cosmos-emulator-run.yml
 
-  - task: PublishBuildArtifacts@1
-    displayName: Publish projectAssetsJson artifacts
-    inputs:
-      PathtoPublish: $(Build.ArtifactStagingDirectory)/projectAssetsJson
-      ArtifactName: projectAssetsJson
-      ArtifactType: Container
-    condition: and(succeededOrFailed(), ne(variables['system.pullrequest.isfork'], true))
+  - task: DotNetCoreCLI@2
+    displayName: Chorus Services Tests
+    inputs: 
+      command: test  
+      projects: src/Chorus.Services/tests/*.csproj
+      arguments: $(TestArguments) --configuration $(BuildConfiguration) /p:OS=$(OS)
+      publishTestResults: true 
+      testRunTitle: Chorus.Services
+    env:
+      ASPNETCORE_ENVIRONMENT: $(Env)
+      DOTNET_ENVIRONMENT: $(Env)
 
-  - task: PublishBuildArtifacts@1
-    displayName: Publish build_logs artifacts
-    inputs:
-      PathtoPublish: $(Build.ArtifactStagingDirectory)/build_logs
-      ArtifactName: build_logs
-      ArtifactType: Container
-    condition: and(succeededOrFailed(), ne(variables['system.pullrequest.isfork'], true))
+  - task: DotNetCoreCLI@2
+    displayName: Chorus Client Tests
+    inputs: 
+      command: test  
+      projects: src/Chorus.Client/tests/*.csproj
+      arguments: $(TestArguments) --configuration $(BuildConfiguration) /p:OS=$(OS)
+      publishTestResults: true 
+      testRunTitle: Chorus.Client
+    env:
+      ASPNETCORE_ENVIRONMENT: $(Env)
+      DOTNET_ENVIRONMENT: $(Env)
 
-  ## The rest of these steps are for deployment and skipped for PR builds
-
-  #- task: PublishBuildArtifacts@1
-  #  inputs:
-  #    PathtoPublish: $(build.sourcesdirectory)/bin
-  #    ArtifactName: bin
-  #    ArtifactType: Container
-  #  condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'), ne(variables['system.pullrequest.isfork'], true))
-
-  - task: PublishBuildArtifacts@1
-    displayName: Publish deployables artifacts
-    inputs:
-      PathtoPublish: $(Build.ArtifactStagingDirectory)/deployables
-      ArtifactName: deployables
-      ArtifactType: Container
-    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'), ne(variables['system.pullrequest.isfork'], true))
-
-- job: Linux
-  pool:
-    vmImage: Ubuntu 16.04
-  container: xenial
-  variables:
-    GitLinkEnabled: false
-  steps:
-  - template: azure-pipelines/testfx.yml
-    parameters:
-      projectdirectory: src/CodeGeneration.Roslyn.Tests
-
-- job: macOS
-  pool:
-    vmImage: macOS 10.13
-  variables:
-    GitLinkEnabled: false
-  steps:
-  - template: azure-pipelines/testfx.yml
-    parameters:
-      projectdirectory: src/CodeGeneration.Roslyn.Tests
+  - task: DotNetCoreCLI@2
+    displayName: Chorus Native Client Tests
+    inputs: 
+      command: test  
+      projects: src/Chorus.Client.Native/tests/*.csproj
+      arguments: $(TestArguments) --configuration $(BuildConfiguration) /p:OS=$(OS)
+      publishTestResults: true 
+      testRunTitle: Chorus.Client.Native
+    env:
+      ASPNETCORE_ENVIRONMENT: $(Env)
+      DOTNET_ENVIRONMENT: $(Env)
