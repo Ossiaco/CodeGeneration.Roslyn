@@ -114,3 +114,4 @@ stages:
       inputs:
           command: pack
           packagesToPack: '**/*.csproj'
+          arguments: --no-build --verbosity normal
