@@ -109,14 +109,3 @@ stages:
         projects: CodeGeneration.Chorus.sln
         arguments: --configuration $(BuildConfiguration) -p:OS=$(OS) -p:FileVersion=$(versionPrefix) -p:Version=$(buildVersion) -m:1 -nowarn:OCC001
 
-    - task: DotNetCoreCLI@2
-      displayName: 'dotnet pack $(buildConfiguration)'
-      inputs:
-        command: 'pack'
-        packagesToPack: '**/*.csproj'
-        nobuild: true
-        includesymbols: true
-        includesource: true
-        versioningScheme: 'off'
-        verbosityPack: 'Normal'
-
