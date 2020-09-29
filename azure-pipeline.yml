@@ -56,7 +56,7 @@ stages:
                 $preRelease = '-{0}.' -f $preRelease.Trim()
             }
             $prefix = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
-            $patch = {0}{1}{2}-{3}' -f $patch.Trim(), $preRelease, $ts.Days, $buildNumber
+            $patch = '{0}{1}{2}-{3}' -f $patch.Trim(), $preRelease, $ts.Days, $buildNumber
             $version = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
             Write-Output ('chorus version prefix: {0}' -f $prefix);
             Write-Output ('chorus patch: {0}' -f $patch);
