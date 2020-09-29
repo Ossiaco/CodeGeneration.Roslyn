@@ -5,10 +5,16 @@ trigger:
     exclude: ["doc", "*.md", ".appveyor.yml", ".travis.yml"]
 
 variables:
-#  TreatWarningsAsErrors: true
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
-  BuildConfiguration: Release
-  BuildPlatform: Any CPU
+- name: VmImage
+  value: windows-latest
+- name: BuildConfiguration 
+  value: Release
+- name: Env
+  value: ci
+- name: netCoreVersion
+  value: 3.1.402
+- name: nugetVersion
+  value: 5.7.0
 
 resources:
   containers:
