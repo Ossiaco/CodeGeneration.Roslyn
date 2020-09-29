@@ -18,58 +18,58 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\EnumerableExtensions.cs" Link="Roslyn\Utilities\EnumerableExtensions.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\EnumerableExtensions.cs" Link="Roslyn\Utilities\EnumerableExtensions.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\IReadOnlySet.cs" Link="Roslyn\Utilities\IReadOnlySet.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\IReadOnlySet.cs" Link="Roslyn\Utilities\IReadOnlySet.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\NullableAttributes.cs" Link="Roslyn\Utilities\NullableAttributes.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\NullableAttributes.cs" Link="Roslyn\Utilities\NullableAttributes.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.cs" Link="Roslyn\Utilities\SpecializedCollections.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.cs" Link="Roslyn\Utilities\SpecializedCollections.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Collection.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Collection.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Collection.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Collection.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Dictionary.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Dictionary.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Dictionary.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Dictionary.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerable.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerable.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerable.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerable.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerator.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerator.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerator.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerator.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerator`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerator`1.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Enumerator`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Enumerator`1.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.List.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.List.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.List.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.List.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Set.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Set.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Empty.Set.cs" Link="Roslyn\Utilities\SpecializedCollections.Empty.Set.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Collection.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Collection.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Collection.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Collection.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Enumerable`1.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Enumerable`1.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Enumerable`1.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Enumerable`1.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Enumerable`2.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Enumerable`2.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Enumerable`2.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Enumerable`2.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Set.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Set.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.ReadOnly.Set.cs" Link="Roslyn\Utilities\SpecializedCollections.ReadOnly.Set.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Singleton.Collection`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Singleton.Collection`1.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Singleton.Collection`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Singleton.Collection`1.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
-		<Compile Include="..\..\..\..\dotnet\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Singleton.Enumerator`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Singleton.Enumerator`1.cs">
+		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\InternalUtilities\SpecializedCollections.Singleton.Enumerator`1.cs" Link="Roslyn\Utilities\SpecializedCollections.Singleton.Enumerator`1.cs">
 			<ExcludeFromStyleCop>true</ExcludeFromStyleCop>
 		</Compile>
 		<Compile Include="..\submodules\roslyn\src\Compilers\Core\Portable\Collections\ArrayBuilderExtensions.cs" Link="Roslyn\Collections\ArrayBuilderExtensions.cs">
