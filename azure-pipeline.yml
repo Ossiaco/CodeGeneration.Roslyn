@@ -112,10 +112,10 @@ stages:
     - task: NuGetAuthenticate@0
       displayName: 'NuGet Authenticate'
     - task: NuGetCommand@2
-      displayName: 'NuGet push'
+      displayName: 'NuGet push $(Build.ArtifactStagingDirectory)/artifacts/packages/$(buildConfiguration)/Shipping/*.nupkg'
       inputs:
         command: 'push'
-        packagesToPush: '$(Build.ArtifactStagingDirectory)/artifacts/packages/$(buildConfiguration)/Shipping/*.nupkg;$(Build.ArtifactStagingDirectory)/artifacts/packages/$(buildConfiguration)/Shipping/*.symbols.nupkg'
+        packagesToPush: '$(Build.ArtifactStagingDirectory)/artifacts/packages/$(buildConfiguration)/Shipping/*.nupkg;!$(Build.ArtifactStagingDirectory)/artifacts/packages/$(buildConfiguration)/Shipping/*.symbols.nupkg'
         nuGetFeedType: 'internal'
         publishVstsFeed: '65bd3f35-c189-4c0d-b80a-db6cc426db7f/5d7dc4f8-20d4-47a6-be10-7973c07d2daf'
         allowPackageConflicts: true
