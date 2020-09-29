@@ -113,7 +113,4 @@ stages:
       displayName: 'dotnet pack $(buildConfiguration)'
       inputs:
           command: pack
-          versioningScheme: byPrereleaseNumber
-          majorVersion: '$(MajorVersion)'
-          minorVersion: '$(MinorVersion)'
-          patchVersion: '$(versionPatch)'
+          packagesToPack: '**/*.csproj'
