@@ -27,44 +27,44 @@ jobs:
     #e.g. 3.0.0-1-100, 3.0.0-preview.1-100. Build portion is generated as part of prerelease ('.' separated) because it's being ignored in nuget package version (e.g. +1-100).
     - checkout: none
 
-  - task: PowerShell@2
-    name: powershell
-    inputs:
+    - task: PowerShell@2
+      name: powershell
+      inputs:
         targetType: inline
         script: |
-        [string] $major = '$(MajorVersion)'
-        [string] $minor = '$(MinorVersion)'
-        [string] $patch = '$(PatchVersion)'
-        [string] $preRelease = '$(PreReleaseVersion)'
-        [string] $buildNumber = '$(Build.BuildId)'
+          [string] $major = '$(MajorVersion)'
+          [string] $minor = '$(MinorVersion)'
+          [string] $patch = '$(PatchVersion)'
+          [string] $preRelease = '$(PreReleaseVersion)'
+          [string] $buildNumber = '$(Build.BuildId)'
 
-        if ([string]::IsNullOrWhiteSpace($major)) {
+          if ([string]::IsNullOrWhiteSpace($major)) {
             throw "MajorVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
-        }
-        if ([string]::IsNullOrWhiteSpace($minor)) {
+          }
+          if ([string]::IsNullOrWhiteSpace($minor)) {
             throw "MinorVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
-        }
-        if ([string]::IsNullOrWhiteSpace($patch)) {
+          }
+          if ([string]::IsNullOrWhiteSpace($patch)) {
             throw "PatchVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
-        }
+          }
 
-        $d1 = '2019-01-01'
-        $d2 = [DateTime]::Today
-        $ts = New-TimeSpan -Start $d1 -End $d2
-        if (![string]::IsNullOrWhiteSpace($preRelease)) {
+          $d1 = '2019-01-01'
+          $d2 = [DateTime]::Today
+          $ts = New-TimeSpan -Start $d1 -End $d2
+          if (![string]::IsNullOrWhiteSpace($preRelease)) {
             $preRelease = '-{0}.' -f $preRelease.Trim()
-        }
-        $prefix = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
-        $version = '{0}.{1}.{2}{3}{4}-{5}' -f $major.Trim(), $minor.Trim(), $patch.Trim(), $preRelease, $ts.Days, $buildNumber
-        Write-Output ('chorus version prefix: {0}' -f $prefix);
-        Write-Output ('chorus version: {0}' -f $version);
-        Write-Host "##vso[task.setvariable variable=versionPrefix;isOutput=true]$prefix"
-        Write-Host "##vso[task.setvariable variable=buildVersion;isOutput=true]$version"
+          }
+          $prefix = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
+          $version = '{0}.{1}.{2}{3}{4}-{5}' -f $major.Trim(), $minor.Trim(), $patch.Trim(), $preRelease, $ts.Days, $buildNumber
+          Write-Output ('chorus version prefix: {0}' -f $prefix);
+          Write-Output ('chorus version: {0}' -f $version);
+          Write-Host "##vso[task.setvariable variable=versionPrefix;isOutput=true]$prefix"
+          Write-Host "##vso[task.setvariable variable=buildVersion;isOutput=true]$version"
 
-    failOnStderr: true
-  displayName: Generate Chorus Version
+      failOnStderr: true
+    displayName: Generate Chorus Version
 
-- job: build_chorus_solution
+- job: build_solution
   displayName: Build Chorus
   continueOnError: false
   timeoutInMinutes: 30  
