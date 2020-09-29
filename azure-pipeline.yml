@@ -15,6 +15,12 @@ variables:
   value: 3.1.402
 - name: nugetVersion
   value: 5.7.0
+- name: MajorVersion
+  value: 1
+- name: MinorVersion
+  value: 0
+- name: PatchVersion
+  value: 0
 
 stages:
 - stage: GetVersion
@@ -37,9 +43,9 @@ stages:
         inputs:
           targetType: inline
           script: |
-            [string] $major = '1'
-            [string] $minor = '0'
-            [string] $patch = '0'
+            [string] $major = '$(MajorVersion)'
+            [string] $minor = '$(MinorVersion)'
+            [string] $patch = '$(PatchVersion)'
             [string] $preRelease = ''
             [string] $buildNumber = '$(Build.BuildId)'
  
@@ -50,9 +56,12 @@ stages:
                 $preRelease = '-{0}.' -f $preRelease.Trim()
             }
             $prefix = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
-            $version = '{0}.{1}.{2}{3}{4}-{5}' -f $major.Trim(), $minor.Trim(), $patch.Trim(), $preRelease, $ts.Days, $buildNumber
+            $patch = {0}{1}{2}-{3}' -f $patch.Trim(), $preRelease, $ts.Days, $buildNumber
+            $version = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
             Write-Output ('chorus version prefix: {0}' -f $prefix);
+            Write-Output ('chorus patch: {0}' -f $patch);
             Write-Output ('chorus version: {0}' -f $version);
+            Write-Host "##vso[task.setvariable variable=versionPatch;isOutput=true]$patch"
             Write-Host "##vso[task.setvariable variable=versionPrefix;isOutput=true]$prefix"
             Write-Host "##vso[task.setvariable variable=buildVersion;isOutput=true]$version"
 
@@ -67,6 +76,8 @@ stages:
     value: $[ stageDependencies.GetVersion.create_version.outputs['powershell.versionPrefix'] ]
   - name: buildVersion
     value: $[ stageDependencies.GetVersion.create_version.outputs['powershell.buildVersion'] ]
+  - name: versionPatch
+    value: $[ stageDependencies.GetVersion.create_version.outputs['powershell.versionPatch'] ]
 
   jobs:
   - job: build_codegen_solution
@@ -97,3 +108,12 @@ stages:
         command: build
         projects: CodeGeneration.Roslyn.sln
         arguments: --configuration $(BuildConfiguration) -p:OS=$(OS) -p:FileVersion=$(versionPrefix) -p:Version=$(buildVersion) -m:1 -nowarn:OCC001
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet pack $(buildConfiguration)'
+      inputs:
+          command: pack
+          versioningScheme: byPrereleaseNumber
+          majorVersion: '$(MajorVersion)'
+          minorVersion: '$(MinorVersion)'
+          patchVersion: '$(versionPatch)'
