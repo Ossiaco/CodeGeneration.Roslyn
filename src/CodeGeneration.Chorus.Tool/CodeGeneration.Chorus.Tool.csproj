@@ -11,6 +11,7 @@
 		<Nullable>disable</Nullable>
 		<NoWarn>$(NoWarn);CS1591</NoWarn>
 		<IsShippingPackage>true</IsShippingPackage>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	</PropertyGroup>
 
 	<ItemGroup>
