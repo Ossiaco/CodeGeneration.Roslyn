@@ -37,22 +37,12 @@ stages:
         inputs:
           targetType: inline
           script: |
-            [string] $major = '$(MajorVersion)'
-            [string] $minor = '$(MinorVersion)'
-            [string] $patch = '$(PatchVersion)'
-            [string] $preRelease = '$(PreReleaseVersion)'
+            [string] $major = '1'
+            [string] $minor = '0'
+            [string] $patch = '0'
+            [string] $preRelease = ''
             [string] $buildNumber = '$(Build.BuildId)'
-
-            if ([string]::IsNullOrWhiteSpace($major)) {
-              throw "MajorVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
-            }
-            if ([string]::IsNullOrWhiteSpace($minor)) {
-              throw "MinorVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
-            }
-            if ([string]::IsNullOrWhiteSpace($patch)) {
-              throw "PatchVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
-            }
-
+ 
             $d1 = '2019-01-01'
             $d2 = [DateTime]::Today
             $ts = New-TimeSpan -Start $d1 -End $d2
