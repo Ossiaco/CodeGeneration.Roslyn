@@ -6,6 +6,7 @@
 		<SignAssembly>false</SignAssembly>
 		<NullableContextOptions>disable</NullableContextOptions>
 		<Nullable>disable</Nullable>
+		<IsShippingPackage>true</IsShippingPackage>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	</PropertyGroup>
 
