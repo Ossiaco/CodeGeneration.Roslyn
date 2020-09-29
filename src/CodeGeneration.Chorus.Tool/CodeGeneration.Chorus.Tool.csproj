@@ -4,7 +4,7 @@
 		<PackageType>DotnetCliTool</PackageType>
 		<OutputType>Exe</OutputType>
 		<TargetFramework>netcoreapp2.1</TargetFramework>
-		<AssemblyName>chorus-codegen</AssemblyName>
+		<AssemblyName>dotnet-codegen</AssemblyName>
 		<Description>The dotnet code generation tool that works with the CodeGeneration.Chorus nuget package.</Description>
 		<CodeAnalysisRuleSet>..\CodeGeneration.Chorus\CodeGeneration.Chorus.ruleset</CodeAnalysisRuleSet>
 		<NullableContextOptions>disable</NullableContextOptions>
