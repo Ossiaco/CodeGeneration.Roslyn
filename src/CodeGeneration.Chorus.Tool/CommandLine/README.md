@@ -1,4 +1,4 @@
-# CodeGeneration.Roslyn.Tool.CommandLine
+# CodeGeneration.Chorus.Tool.CommandLine
 
 The purpose of this library is to make command line tools first class by
 providing a command line parser. We've already made an attempt in 2009 but
@@ -180,7 +180,7 @@ before, as well as after the response file reference.
 
 ```C#
 using System;
-using CodeGeneration.Roslyn.Tool.CommandLine;
+using CodeGeneration.Chorus.Tool.CommandLine;
 
 static class Program
 {

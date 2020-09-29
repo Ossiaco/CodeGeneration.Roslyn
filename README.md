@@ -1,7 +1,7 @@
 # Roslyn-based Code Generation
 
-[![Build Status](https://andrewarnott.visualstudio.com/OSS/_apis/build/status/CodeGeneration.Roslyn)](https://andrewarnott.visualstudio.com/OSS/_build/latest?definitionId=15)
-[![NuGet package](https://img.shields.io/nuget/v/CodeGeneration.Roslyn.svg)][NuPkg]
+[![Build Status](https://andrewarnott.visualstudio.com/OSS/_apis/build/status/CodeGeneration.Chorus)](https://andrewarnott.visualstudio.com/OSS/_build/latest?definitionId=15)
+[![NuGet package](https://img.shields.io/nuget/v/CodeGeneration.Chorus.svg)][NuPkg]
 
 Assists in performing Roslyn-based code generation during a build.
 This includes design-time support, such that code generation can respond to
@@ -26,7 +26,7 @@ your code generation attribute is applied to, but with a suffix appended to its 
 * [.NET Core SDK v2.1+][dotnet-sdk-2.1]
   
   If you don't have v2.1+ there will be cryptic error messages
-  (see [#111](https://github.com/AArnott/CodeGeneration.Roslyn/issues/111)).
+  (see [#111](https://github.com/AArnott/CodeGeneration.Chorus/issues/111)).
 
 * .NET Core SDK v2.1.500 specifically for building this project
 
@@ -40,13 +40,13 @@ This must be done in a library that targets `netstandard2.0` or `net461`
 Your generator cannot be defined in the same project that will have code generated
 for it because code generation runs *before* the receiving project is itself compiled.
 
-Install the [CodeGeneration.Roslyn][NuPkg] NuGet Package.
+Install the [CodeGeneration.Chorus][NuPkg] NuGet Package.
 
 Define the generator class in a class library targeting `netstandard2.0`
 (*note: constructor accepting `AttributeData` parameter is required*):
 
 ```csharp
-using CodeGeneration.Roslyn;
+using CodeGeneration.Chorus;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -94,7 +94,7 @@ can apply your attribute. So define your attribute in another assembly if
 it must be applied to projects that target older platforms.
 
 If your attributes are in their own project, you must install the
-[CodeGeneration.Roslyn.Attributes][AttrNuPkg] package to your attributes project.
+[CodeGeneration.Chorus.Attributes][AttrNuPkg] package to your attributes project.
 
 Define your attribute class.
 For this walkthrough, we will assume that the attributes are defined in the same
@@ -104,7 +104,7 @@ If the attributes and code generator classes were in separate assemblies, you mu
 specify the assembly-qualified name of the generator type as a string instead.
 
 ```csharp
-using CodeGeneration.Roslyn;
+using CodeGeneration.Chorus;
 using System;
 using System.Diagnostics;
 using Validation;
@@ -150,7 +150,7 @@ public class Foo
 }
 ```
 
-Install the [CodeGeneration.Roslyn.BuildTime][BuildTimeNuPkg] package into the
+Install the [CodeGeneration.Chorus.BuildTime][BuildTimeNuPkg] package into the
 project that uses your attribute. You may set `PrivateAssets="all"` on this reference
 because this is a build-time only package. You must also add this item to an `<ItemGroup>` in the project
 that will execute the code generator as part of your build:
@@ -196,12 +196,12 @@ to immediately see the effects of your changes on the generated code.
 [Packaging up your code generator for others' use]: #packaging-up-your-code-generator-for-others-use
 
 You can also package up your code generator as a NuGet package for others to install
-and use. Your NuGet package should include a dependency on the `CodeGeneration.Roslyn.BuildTime`
-that matches the version of `CodeGeneration.Roslyn` that you used to produce your generator.
+and use. Your NuGet package should include a dependency on the `CodeGeneration.Chorus.BuildTime`
+that matches the version of `CodeGeneration.Chorus` that you used to produce your generator.
 For example, if you used version 0.4.12 of this project, your .nuspec file would include this tag:
 
 ```xml
-<dependency id="CodeGeneration.Roslyn.BuildTime" version="0.4.12" />
+<dependency id="CodeGeneration.Chorus.BuildTime" version="0.4.12" />
 ```
 
 In addition to this dependency, your NuGet package should include a `build` folder with an
@@ -219,7 +219,7 @@ For example your package should have a `build\MyPackage.targets` file with this 
 ```
 
 Then your package should also have a `tools` folder that contains your code generator and any of the runtime
-dependencies it needs *besides those delivered by the `CodeGeneration.Roslyn.BuildTime` package*.
+dependencies it needs *besides those delivered by the `CodeGeneration.Chorus.BuildTime` package*.
 
 Your attributes assembly should be placed under your package's `lib` folder so consuming projects
 can apply those attributes.
@@ -235,9 +235,9 @@ so that the MSBuild Task can invoke the `dotnet codegen` command line tool:
 ```
 
 Make sure that the DotNetCliToolReference version matches the version of the
-`CodeGeneration.Roslyn` package your package depends on.
+`CodeGeneration.Chorus` package your package depends on.
 
-[NuPkg]: https://nuget.org/packages/CodeGeneration.Roslyn
-[BuildTimeNuPkg]: https://nuget.org/packages/CodeGeneration.Roslyn.BuildTime
-[AttrNuPkg]: https://nuget.org/packages/CodeGeneration.Roslyn.Attributes
+[NuPkg]: https://nuget.org/packages/CodeGeneration.Chorus
+[BuildTimeNuPkg]: https://nuget.org/packages/CodeGeneration.Chorus.BuildTime
+[AttrNuPkg]: https://nuget.org/packages/CodeGeneration.Chorus.Attributes
 [netstandard-table]: https://docs.microsoft.com/dotnet/standard/net-standard#net-implementation-support

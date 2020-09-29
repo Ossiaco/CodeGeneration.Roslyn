@@ -26,7 +26,7 @@
     <PropertyGroup>
       <GenerateCodeFromAttributesToolPathOverride
         Condition="'$(GenerateCodeFromAttributesToolPathOverride)' == ''">codegen</GenerateCodeFromAttributesToolPathOverride>
-      <_CodeGenToolOutputBasePath>$(IntermediateOutputPath)$(MSBuildProjectFile).dotnet-codegen</_CodeGenToolOutputBasePath>
+      <_CodeGenToolOutputBasePath>$(IntermediateOutputPath)$(MSBuildProjectFile).chorus-codegen</_CodeGenToolOutputBasePath>
       <_CodeGenToolResponseFileFullPath>$(_CodeGenToolOutputBasePath).rsp</_CodeGenToolResponseFileFullPath>
       <_CodeGenToolGeneratedFileListFullPath>$(_CodeGenToolOutputBasePath).GeneratedFileList.txt</_CodeGenToolGeneratedFileListFullPath>
       <_CodeGenToolResponseFileLines>
@@ -48,7 +48,7 @@
     <ItemGroup>
       <_CodeGenToolResponseFileContent Include="$(_CodeGenToolResponseFileLines)" />
     </ItemGroup>
-    <!--Write response file with arguments for dotnet codegen-->
+    <!--Write response file with arguments for chorus codegen-->
     <WriteLinesToFile
       File="$(_CodeGenToolResponseFileFullPath)"
       Lines="@(_CodeGenToolResponseFileContent)"
@@ -67,12 +67,12 @@
       <Output TaskParameter="ExitCode" PropertyName="_GenerateCodeToolVersionExitCode"/>
     </Exec>
     <Message
-      Text="CodeGeneration.Roslyn.Tool (dotnet-codegen) version: $(_GenerateCodeToolVersion)"
+      Text="CodeGeneration.Chorus.Tool (chorus-codegen) version: $(_GenerateCodeToolVersion)"
       Importance="normal"
       Condition="'$(_GenerateCodeToolVersionExitCode)' == '0'" />
     <Error
       Code="CGR1001"
-      Text="CodeGeneration.Roslyn.Tool (dotnet-codegen) is not available, code generation won't run. Please check https://github.com/AArnott/CodeGeneration.Roslyn for usage instructions."
+      Text="CodeGeneration.Chorus.Tool (chorus-codegen) is not available, code generation won't run."
       Condition="'$(_GenerateCodeToolVersionExitCode)' != '0'" />
     <ItemGroup>
       <FileWrites Include="$(_CodeGenToolResponseFileFullPath)" />
@@ -86,14 +86,14 @@
       StandardOutputImportance="normal" />
     <Error
       Code="CGR1000"
-      Text="CodeGeneration.Roslyn.Tool (dotnet-codegen) failed to generate the list of generated files. The tool didn't run successfully. Please check https://github.com/AArnott/CodeGeneration.Roslyn for usage instructions."
+      Text="CodeGeneration.Chorus.Tool (chorus-codegen) failed to generate the list of generated files. The tool didn't run successfully."
       Condition="Exists('$(_CodeGenToolGeneratedFileListFullPath)') != 'true'" />
     <ReadLinesFromFile File="$(_CodeGenToolGeneratedFileListFullPath)">
-      <Output TaskParameter="Lines" ItemName="CodeGenerationRoslynOutput_Compile"/>
+      <Output TaskParameter="Lines" ItemName="CodeGenerationChorusOutput_Compile"/>
       <Output TaskParameter="Lines" ItemName="FileWrites"/>
     </ReadLinesFromFile>
     <ItemGroup>
-      <Compile Include="@(CodeGenerationRoslynOutput_Compile)" />
+      <Compile Include="@(CodeGenerationChorusOutput_Compile)" />
       <FileWrites Include="$(_CodeGenToolGeneratedFileListFullPath)" />
     </ItemGroup>
   </Target>

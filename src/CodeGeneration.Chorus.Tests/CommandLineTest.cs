@@ -56,7 +56,7 @@
             var projectDir = string.Empty;
             var version = false;
 
-            Roslyn.Tool.CommandLine.ArgumentSyntax.Parse(args, syntax =>
+            Tool.CommandLine.ArgumentSyntax.Parse(args, syntax =>
             {
                 syntax.DefineOption("version", ref version, "Show version of this tool (and exits).");
                 syntax.DefineOptionList("r|reference", ref refs, "Paths to assemblies being referenced");

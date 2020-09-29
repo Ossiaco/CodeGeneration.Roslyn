@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
-namespace CodeGeneration.Roslyn.Tool.CommandLine
+namespace CodeGeneration.Chorus.Tool.CommandLine
 {
     public abstract class Argument
     {

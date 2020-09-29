@@ -92,8 +92,8 @@ stages:
       lfs: true
   
     - task: DotNetCoreCLI@2
-      displayName: Build CodeGeneration.Roslyn
+      displayName: Build CodeGeneration.Chorus
       inputs:
         command: build
-        projects: CodeGeneration.Roslyn.sln
+        projects: CodeGeneration.Chorus.sln
         arguments: --configuration $(BuildConfiguration) -p:OS=$(OS) -p:FileVersion=$(versionPrefix) -p:Version=$(buildVersion) -m:1 -nowarn:OCC001

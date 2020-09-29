@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Andrew Arnott. All rights reserved.
 // Licensed under the MS-PL license. See LICENSE.txt file in the project root for full license information.
 
-namespace CodeGeneration.Roslyn.Generate
+namespace CodeGeneration.Chorus.Generate
 {
     using System;
     using System.Collections.Generic;
@@ -9,7 +9,7 @@ namespace CodeGeneration.Roslyn.Generate
     using System.Reflection;
     using System.Threading.Tasks;
     using CodeGeneration.Chorus;
-    using CodeGeneration.Roslyn.Tool.CommandLine;
+    using CodeGeneration.Chorus.Tool.CommandLine;
     using Microsoft.CodeAnalysis;
 
     internal static class Program

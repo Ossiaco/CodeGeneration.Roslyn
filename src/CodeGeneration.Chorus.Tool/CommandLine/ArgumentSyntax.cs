@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace CodeGeneration.Roslyn.Tool.CommandLine
+namespace CodeGeneration.Chorus.Tool.CommandLine
 {
     public sealed partial class ArgumentSyntax
     {

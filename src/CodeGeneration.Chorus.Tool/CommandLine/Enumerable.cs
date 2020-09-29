@@ -5,11 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace CodeGeneration.Roslyn.Tool.CommandLine
+namespace CodeGeneration.Chorus.Tool.CommandLine
 {
     // Low level replacement of System.Linq Enumerable class. In particular, this implementation
     // doesn't use generic virtual methods.
-    // CodeGeneration.Roslyn.Tool.CommandLine needs to be usable for small .NET Native apps that don't carry the
+    // CodeGeneration.Chorus.Tool.CommandLine needs to be usable for small .NET Native apps that don't carry the
     // overhead of expensive runtime features such as the generic virtual methods.
     internal static class Enumerable
     {

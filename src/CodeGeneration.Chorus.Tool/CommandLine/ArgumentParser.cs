@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace CodeGeneration.Roslyn.Tool.CommandLine
+namespace CodeGeneration.Chorus.Tool.CommandLine
 {
     internal sealed class ArgumentParser
     {

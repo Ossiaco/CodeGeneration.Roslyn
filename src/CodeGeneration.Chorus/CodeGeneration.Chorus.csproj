@@ -6,7 +6,6 @@
 		<SignAssembly>false</SignAssembly>
 		<NullableContextOptions>disable</NullableContextOptions>
 		<Nullable>disable</Nullable>
-		<AssemblyOriginatorKeyFile>D:\git\ossiaco\CodeGeneration.Roslyn\opensource.snk</AssemblyOriginatorKeyFile>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

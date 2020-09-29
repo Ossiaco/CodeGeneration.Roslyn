@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace CodeGeneration.Roslyn.Tool.CommandLine
+namespace CodeGeneration.Chorus.Tool.CommandLine
 {
     internal static class HelpTextGenerator
     {

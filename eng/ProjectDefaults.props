@@ -16,8 +16,8 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <PackageIcon>Icon.png</PackageIcon>
-    <PackageIconFullPath>$(MSBuildThisFileDirectory)Assets\DotNetPackageIcon.png</PackageIconFullPath>
+    <PackageIcon>$(SolutionDirectory)Icon.jpg</PackageIcon>
+    <PackageIconFullPath>$(MSBuildThisFileDirectory)Assets\DotNetPackageIcon.jpg</PackageIconFullPath>
 
     <!-- Disable the message indicating we are using a preview SDK. That is understood and by design -->
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
