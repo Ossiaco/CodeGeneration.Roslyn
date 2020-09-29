@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <LangVersion>Latest</LangVersion>
+    <LangVersion>preview</LangVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <WarningsAsErrors Condition=" '$(Configuration)' == Release ">true</WarningsAsErrors>
