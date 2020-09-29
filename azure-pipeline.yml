@@ -103,7 +103,7 @@ stages:
       lfs: true
   
     - task: DotNetCoreCLI@2
-      displayName: Build CodeGeneration.Chorus
+      displayName: 'dotnet build $(buildConfiguration)'
       inputs:
         command: build
         projects: CodeGeneration.Chorus.sln
