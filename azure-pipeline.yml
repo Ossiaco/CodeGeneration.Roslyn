@@ -5,214 +5,95 @@ trigger:
     exclude: ["doc", "*.md", ".appveyor.yml", ".travis.yml"]
 
 variables:
-#  TreatWarningsAsErrors: true
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
-  BuildConfiguration: Release
-  BuildPlatform: Any CPU
+- name: VmImage
+  value: windows-latest
+- name: BuildConfiguration 
+  value: Release
+- name: Env
+  value: ci
+- name: netCoreVersion
+  value: 3.1.402
+- name: nugetVersion
+  value: 5.7.0
 
-resources:
-  containers:
-  - container: xenial
-    image: andrewarnott/linux-buildagent
+stages:
+- stage: GetVersion
+  displayName: Create Assembly Version
+  
+  jobs:
+    - job: create_version
+      displayName: Create Chorus Version
+      continueOnError: false
+      pool:
+        vmImage: $(VmImage)
 
-jobs:
-- job: create_version
-    displayName: Create Version
+      steps:
+      #versioning must follow https://semver.org/ otherwise msbuild fails
+      #e.g. 3.0.0-1-100, 3.0.0-preview.1-100. Build portion is generated as part of prerelease ('.' separated) because it's being ignored in nuget package version (e.g. +1-100).
+      - checkout: none
+
+      - task: PowerShell@2
+        name: powershell
+        inputs:
+          targetType: inline
+          script: |
+            [string] $major = '1'
+            [string] $minor = '0'
+            [string] $patch = '0'
+            [string] $preRelease = ''
+            [string] $buildNumber = '$(Build.BuildId)'
+ 
+            $d1 = '2019-01-01'
+            $d2 = [DateTime]::Today
+            $ts = New-TimeSpan -Start $d1 -End $d2
+            if (![string]::IsNullOrWhiteSpace($preRelease)) {
+                $preRelease = '-{0}.' -f $preRelease.Trim()
+            }
+            $prefix = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
+            $version = '{0}.{1}.{2}{3}{4}-{5}' -f $major.Trim(), $minor.Trim(), $patch.Trim(), $preRelease, $ts.Days, $buildNumber
+            Write-Output ('chorus version prefix: {0}' -f $prefix);
+            Write-Output ('chorus version: {0}' -f $version);
+            Write-Host "##vso[task.setvariable variable=versionPrefix;isOutput=true]$prefix"
+            Write-Host "##vso[task.setvariable variable=buildVersion;isOutput=true]$version"
+
+          failOnStderr: true
+        displayName: Generate Chorus Version
+
+- stage: Build_Solution
+  displayName: Build Code Generator
+  dependsOn: GetVersion
+  variables:
+  - name: versionPrefix
+    value: $[ stageDependencies.GetVersion.create_version.outputs['powershell.versionPrefix'] ]
+  - name: buildVersion
+    value: $[ stageDependencies.GetVersion.create_version.outputs['powershell.buildVersion'] ]
+
+  jobs:
+  - job: build_codegen_solution
+    displayName: Build Code Generator
     continueOnError: false
+    timeoutInMinutes: 30  
     pool:
-    vmImage: $(VmImage)
-
+      vmImage: $(VmImage)
+  
     steps:
-    #versioning must follow https://semver.org/ otherwise msbuild fails
-    #e.g. 3.0.0-1-100, 3.0.0-preview.1-100. Build portion is generated as part of prerelease ('.' separated) because it's being ignored in nuget package version (e.g. +1-100).
-    - checkout: none
 
-    - task: PowerShell@2
-    name: powershell
-    inputs:
-        targetType: inline
-        script: |
-        [string] $major = '$(MajorVersion)'
-        [string] $minor = '$(MinorVersion)'
-        [string] $patch = '$(PatchVersion)'
-        [string] $preRelease = '$(PreReleaseVersion)'
-        [string] $buildNumber = '$(Build.BuildId)'
-
-        if ([string]::IsNullOrWhiteSpace($major)) {
-            throw "MajorVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
-        }
-        if ([string]::IsNullOrWhiteSpace($minor)) {
-            throw "MinorVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
-        }
-        if ([string]::IsNullOrWhiteSpace($patch)) {
-            throw "PatchVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
-        }
-
-        $d1 = '2019-01-01'
-        $d2 = [DateTime]::Today
-        $ts = New-TimeSpan -Start $d1 -End $d2
-        if (![string]::IsNullOrWhiteSpace($preRelease)) {
-            $preRelease = '-{0}.' -f $preRelease.Trim()
-        }
-        $prefix = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
-        $version = '{0}.{1}.{2}{3}{4}-{5}' -f $major.Trim(), $minor.Trim(), $patch.Trim(), $preRelease, $ts.Days, $buildNumber
-        Write-Output ('chorus version prefix: {0}' -f $prefix);
-        Write-Output ('chorus version: {0}' -f $version);
-        Write-Host "##vso[task.setvariable variable=versionPrefix;isOutput=true]$prefix"
-        Write-Host "##vso[task.setvariable variable=buildVersion;isOutput=true]$version"
-
-        failOnStderr: true
-    displayName: Generate Chorus Version
-
-- job: build_chorus_solution
-  displayName: Build Chorus
-  continueOnError: false
-  timeoutInMinutes: 30  
-  pool:
-    vmImage: $(VmImage)
-
-  steps:
-
-  - task: UseDotNet@2
-    inputs:
-      packageType: sdk
-      version: $(netCoreVersion)
-      installationPath: $(Agent.ToolsDirectory)/dotnet
-      includePreviewVersions: true
-      performMultiLevelLookup: true
-
-  - task: AzureKeyVault@1
-    inputs:
-      azureSubscription: DevopsPipeline
-      KeyVaultName: ossiacocivault
-      SecretsFilter: chorusCertificate, httpsCertificate, rootCaCertificate, intermediateCaCertificate, dcbelCertificate
-    displayName: Get secrets from key vault
-
-  - checkout: self 
-    submodules: recursive
-    clean: true
-    lfs: true
-
-  - task: DotNetCoreCLI@2
-    displayName: Build Chorus
-    inputs:
-      command: build
-      projects: Chorus.sln
-      arguments: --configuration $(BuildConfiguration) -p:OS=$(OS) -p:FileVersion=$(versionPrefix) -p:Version=$(buildVersion) -m:1 -nowarn:OCC001
-
-  - task: PowerShell@2
-    inputs:
-      targetType: inline
-      script: |
-        $chorusCertificateBase64 = '$(chorusCertificate)'
-        $httpsCertificateBase64 = '$(httpsCertificate)'
-        $rootCaCertificateBase64 = '$(rootCaCertificate)'
-        $intermediateCaCertificateBase64 = '$(intermediateCaCertificate)'
-        $dcbelCertificateBase64 = '$(dcbelCertificate)'
-        
-        $chorusCertificateBytes = [System.Convert]::FromBase64String($chorusCertificateBase64)
-        $httpsCertificateBytes = [System.Convert]::FromBase64String($httpsCertificateBase64)
-        $rootCaCertificateBytes = [System.Convert]::FromBase64String($rootCaCertificateBase64)
-        $intermediateCaCertificateBytes = [System.Convert]::FromBase64String($intermediateCaCertificateBase64)
-        $dcbelCertificateBytes = [System.Convert]::FromBase64String($dcbelCertificateBase64)
-        
-        $KeyStorageFlags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bxor [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::MachineKeySet -bxor [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet;
-        $chorusPfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($chorusCertificateBytes,$null,$KeyStorageFlags)
-        $httpsPfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($httpsCertificateBytes,$null,$KeyStorageFlags)
-        $rootCaCertificatePfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($rootCaCertificateBytes,$null,$KeyStorageFlags)
-        $intermediateCaCertificatePfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($intermediateCaCertificateBytes,$null,$KeyStorageFlags)
-        $dcbelCertificatePfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($dcbelCertificateBytes,$null,$KeyStorageFlags)
-        
-        $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("My", "LocalMachine")
-        $store.open("MaxAllowed")
-        $store.add($chorusPfx)
-        $store.add($httpsPfx)
-        $store.add($rootCaCertificatePfx)
-        $store.add($intermediateCaCertificatePfx)
-        $store.add($dcbelCertificatePfx)
-        $store.close()
-        
-        $certificatePath = 'Cert:\LocalMachine\My\' + ($httpsPfx.ThumbPrint)  
-        Export-Certificate -Cert $certificatePath -FilePath '.\localhost.cer'
-        Import-Certificate -FilePath '.\localhost.cer' -CertStoreLocation cert:\LocalMachine\Root
-
-        $certificatePath = 'Cert:\LocalMachine\My\' + ($rootCaCertificatePfx.ThumbPrint)  
-        Export-Certificate -Cert $certificatePath -FilePath '.\rootca.cer'
-        Import-Certificate -FilePath '.\rootca.cer' -CertStoreLocation cert:\LocalMachine\Root
-       
-        $certificatePath = 'Cert:\LocalMachine\My\' + ($intermediateCaCertificatePfx.ThumbPrint)  
-        Export-Certificate -Cert $certificatePath -FilePath '.\intermediateca.cer'
-        Import-Certificate -FilePath '.\intermediateca.cer' -CertStoreLocation cert:\LocalMachine\Root
-
-        Write-Output ('Chorus certificate subject: {0}, Thumbprint {1}' -f $chorusPfx.Subject, $httpsPfx.ThumbPrint);
-        Write-Output ('Chorus HTTPS subject: {0}, Thumbprint {1}' -f $httpsPfx.Subject, $httpsPfx.ThumbPrint);
-        Write-Output ('Chorus root CA subject: {0}, Thumbprint {1}' -f $rootCaCertificatePfx.Subject, $rootCaCertificatePfx.ThumbPrint);
-        Write-Output ('Chorus intermediate CA subject: {0}, Thumbprint {1}' -f $intermediateCaCertificatePfx.Subject, $intermediateCaCertificatePfx.ThumbPrint);
-        Write-Output ('Chorus dcbel device subject: {0}, Thumbprint {1}' -f $dcbelCertificatePfx.Subject, $dcbelCertificatePfx.ThumbPrint);
-       
-      failOnStderr: true
-    displayName: Install Certificates
-
-  - task: DotNetCoreCLI@2
-    displayName: Chorus Tests
-    inputs: 
-      command: test  
-      projects: src/Chorus/tests/*.csproj
-      arguments: $(TestArguments) --configuration $(BuildConfiguration) /p:OS=$(OS)
-      publishTestResults: true 
-      testRunTitle: Chorus
-    env:
-      ASPNETCORE_ENVIRONMENT: $(Env)
-      DOTNET_ENVIRONMENT: $(Env)
-
-  - task: DotNetCoreCLI@2
-    displayName: Build Chorus Services Configure
-    inputs:
-      command: build
-      projects: src/Chorus.Services.Configure/src/*.csproj
-      arguments: --configuration $(BuildConfiguration) -p:OS=$(OS) -p:FileVersion=$(versionPrefix) -p:Version=$(buildVersion) -m:1 -nowarn:OCC001
-
-  - task: CmdLine@2
-    displayName: Start Azure Storage Emulator
-    inputs:
-      script: |
-        "%ProgramFiles(x86)%\Microsoft SDKs\Azure\Storage Emulator\AzureStorageEmulator.exe" init /server "(localdb)\MsSqlLocalDb"
-        "%ProgramFiles(x86)%\Microsoft SDKs\Azure\Storage Emulator\AzureStorageEmulator.exe" start
-
-  - template: templates/cosmos-emulator-run.yml
-
-  - task: DotNetCoreCLI@2
-    displayName: Chorus Services Tests
-    inputs: 
-      command: test  
-      projects: src/Chorus.Services/tests/*.csproj
-      arguments: $(TestArguments) --configuration $(BuildConfiguration) /p:OS=$(OS)
-      publishTestResults: true 
-      testRunTitle: Chorus.Services
-    env:
-      ASPNETCORE_ENVIRONMENT: $(Env)
-      DOTNET_ENVIRONMENT: $(Env)
-
-  - task: DotNetCoreCLI@2
-    displayName: Chorus Client Tests
-    inputs: 
-      command: test  
-      projects: src/Chorus.Client/tests/*.csproj
-      arguments: $(TestArguments) --configuration $(BuildConfiguration) /p:OS=$(OS)
-      publishTestResults: true 
-      testRunTitle: Chorus.Client
-    env:
-      ASPNETCORE_ENVIRONMENT: $(Env)
-      DOTNET_ENVIRONMENT: $(Env)
-
-  - task: DotNetCoreCLI@2
-    displayName: Chorus Native Client Tests
-    inputs: 
-      command: test  
-      projects: src/Chorus.Client.Native/tests/*.csproj
-      arguments: $(TestArguments) --configuration $(BuildConfiguration) /p:OS=$(OS)
-      publishTestResults: true 
-      testRunTitle: Chorus.Client.Native
-    env:
-      ASPNETCORE_ENVIRONMENT: $(Env)
-      DOTNET_ENVIRONMENT: $(Env)
+    - task: UseDotNet@2
+      inputs:
+        packageType: sdk
+        version: $(netCoreVersion)
+        installationPath: $(Agent.ToolsDirectory)/dotnet
+        includePreviewVersions: true
+        performMultiLevelLookup: true
+ 
+    - checkout: self 
+      submodules: recursive
+      clean: true
+      lfs: true
+  
+    - task: DotNetCoreCLI@2
+      displayName: Build CodeGeneration.Roslyn
+      inputs:
+        command: build
+        projects: CodeGeneration.Roslyn.sln
+        arguments: --configuration $(BuildConfiguration) -p:OS=$(OS) -p:FileVersion=$(versionPrefix) -p:Version=$(buildVersion) -m:1 -nowarn:OCC001
