@@ -46,22 +46,22 @@ stages:
             [string] $major = '$(MajorVersion)'
             [string] $minor = '$(MinorVersion)'
             [string] $patch = '$(PatchVersion)'
-            [string] $preRelease = ''
             [string] $buildNumber = '$(Build.BuildId)'
- 
-            $d1 = '2019-01-01'
-            $d2 = [DateTime]::Today
-            $ts = New-TimeSpan -Start $d1 -End $d2
-            if (![string]::IsNullOrWhiteSpace($preRelease)) {
-                $preRelease = '-{0}.' -f $preRelease.Trim()
+
+            if ([string]::IsNullOrWhiteSpace($major)) {
+              throw "MajorVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
             }
+            if ([string]::IsNullOrWhiteSpace($minor)) {
+              throw "MinorVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
+            }
+            if ([string]::IsNullOrWhiteSpace($patch)) {
+              throw "PatchVersion not informed. Please check Azure DevOps variable group 'ChorusVersion'."
+            }
+
             $prefix = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
-            $patch = '{0}{1}{2}-{3}' -f $patch.Trim(), $preRelease, $ts.Days, $buildNumber
-            $version = '{0}.{1}.{2}' -f $major.Trim(), $minor.Trim(), $patch.Trim()
+            $version = '{0}.{1}.{2}-{3}' -f $major.Trim(), $minor.Trim(), $patch.Trim(), $buildNumber
             Write-Output ('chorus version prefix: {0}' -f $prefix);
-            Write-Output ('chorus patch: {0}' -f $patch);
             Write-Output ('chorus version: {0}' -f $version);
-            Write-Host "##vso[task.setvariable variable=versionPatch;isOutput=true]$patch"
             Write-Host "##vso[task.setvariable variable=versionPrefix;isOutput=true]$prefix"
             Write-Host "##vso[task.setvariable variable=buildVersion;isOutput=true]$version"
 
@@ -76,8 +76,6 @@ stages:
     value: $[ stageDependencies.GetVersion.create_version.outputs['powershell.versionPrefix'] ]
   - name: buildVersion
     value: $[ stageDependencies.GetVersion.create_version.outputs['powershell.buildVersion'] ]
-  - name: versionPatch
-    value: $[ stageDependencies.GetVersion.create_version.outputs['powershell.versionPatch'] ]
 
   jobs:
   - job: build_codegen_solution
