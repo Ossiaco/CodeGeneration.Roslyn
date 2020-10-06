@@ -94,7 +94,7 @@ namespace CodeGeneration.Chorus.Json
                 innerMembers.Add(await ToJsonMethodAsync(isSealed, properties));
             }
 
-            innerMembers.AddRange(IEquatableImplementation(properties, directAncestor));
+            // innerMembers.AddRange(IEquatableImplementation(properties, directAncestor));
 
             var partialClass = ClassDeclaration(this.metaType.ClassNameIdentifier)
                  .AddBaseListTypes(this.metaType.SemanticModel.AsFullyQualifiedBaseType(this.metaType).ToArray())
