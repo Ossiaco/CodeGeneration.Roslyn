@@ -115,7 +115,7 @@ namespace CodeGeneration.Chorus.Json
             outerMembers = outerMembers.Add(partialClass);
 
             var usingsDirectives = List(new[] {
-                UsingDirective(ParseName(typeof(System.Text.Json.JsonElement).Namespace)),
+                UsingDirective(ParseName(typeof(System.Text.Json.JsonElement).Namespace ?? throw new ArgumentNullException(nameof(Type.Namespace)))),
                 UsingDirective(ParseName("Chorus.Text.Json")),
             });
 
@@ -581,7 +581,7 @@ namespace CodeGeneration.Chorus.Json
                 Id = IdentifierName("Id");
                 PostedTime = IdentifierName("PostedTime");
                 UserId = IdentifierName("UserId");
-                GuidType = IdentifierName(typeof(Guid).FullName);
+                GuidType = IdentifierName(typeof(Guid).FullName ?? throw new NullReferenceException(nameof(Type.FullName)));
                 ActorIdParameterType = Parameter(ActorIdParameterName.Identifier).WithType(GuidType);
                 CorrelatingParamType = Parameter(CorrelationParameterName.Identifier).WithType(ParseName("Chorus.Messaging.IMessage"));
                 DirectDescendentArguments = new[] { Argument(NameColon(CorrelationParameterName), NoneToken, CorrelationParameterName), Argument(NameColon(ActorIdParameterName), NoneToken, ActorIdParameterName) };
@@ -590,7 +590,7 @@ namespace CodeGeneration.Chorus.Json
                 DefaultParameters = new[] { CorrelatingParamType, ActorIdParameterType };
                 DotId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, CorrelationParameterName, Id);
                 DotUserId = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, CorrelationParameterName, UserId);
-                UtcNow = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName(typeof(DateTimeOffset).FullName), IdentifierName(nameof(DateTimeOffset.UtcNow)));
+                UtcNow = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName(typeof(DateTimeOffset).FullName ?? throw new NullReferenceException(nameof(Type.FullName))), IdentifierName(nameof(DateTimeOffset.UtcNow)));
 
                 ToUnixTimeMilliseconds = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, UtcNow, IdentifierName(nameof(DateTimeOffset.ToUnixTimeMilliseconds)))
                                                                            .WithOperatorToken(Token(SyntaxKind.DotToken)))
@@ -660,9 +660,9 @@ namespace CodeGeneration.Chorus.Json
                 errorProperty = IdentifierName("Error");
                 requestParamType = Parameter(requestParam.Identifier).WithType(ParseName("Chorus.Messaging.IRequestMessage"));
                 requestIdParam = IdentifierName("requestId");
-                requestIdParamType = Parameter(requestIdParam.Identifier).WithType(ParseName(typeof(int).FullName));
+                requestIdParamType = Parameter(requestIdParam.Identifier).WithType(ParseName(typeof(int).FullName ?? throw new NullReferenceException(nameof(Type.FullName))));
                 hasMoreParam = IdentifierName("hasMore");
-                hasMoreParamType = Parameter(hasMoreParam.Identifier).WithType(NullableType(ParseName(typeof(bool).FullName)))
+                hasMoreParamType = Parameter(hasMoreParam.Identifier).WithType(NullableType(ParseName(typeof(bool).FullName ?? throw new NullReferenceException(nameof(Type.FullName)))))
                         .WithDefault(EqualsValueClause((ExpressionSyntax)Syntax.Generator.NullLiteralExpression()));
 
                 exceptionParam = IdentifierName("error");

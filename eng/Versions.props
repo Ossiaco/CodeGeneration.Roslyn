@@ -23,8 +23,6 @@
 	</PropertyGroup>
 
 	<PropertyGroup Label="Code Analyzers and Generators">
-		<CodeGenPackageVersionVersion>0.7.2-g00d4a38077</CodeGenPackageVersionVersion>
-		<CodeGenBuildTimePackageVersionVersion>0.6.101-g1fea40ec38</CodeGenBuildTimePackageVersionVersion>
 		<MicrosoftCSharpPackageVersion>4.7.0</MicrosoftCSharpPackageVersion>
 		<MicrosoftCodeAnalysisPackageVersion>3.7.0</MicrosoftCodeAnalysisPackageVersion>
 		<MicrosoftCodeAnalysisCSharpPackageVersion>3.7.0</MicrosoftCodeAnalysisCSharpPackageVersion>

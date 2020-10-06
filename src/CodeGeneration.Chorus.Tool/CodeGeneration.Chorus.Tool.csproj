@@ -1,10 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<PackageType>DotnetCliTool</PackageType>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>netcoreapp2.1</TargetFramework>
-		<AssemblyName>dotnet-codegen</AssemblyName>
+		<TargetFramework>net5.0</TargetFramework>
+		<PackAsTool>true</PackAsTool>
+		<IncludeSymbols>false</IncludeSymbols>
+		<ToolCommandName>codegen</ToolCommandName>
 		<Description>The dotnet code generation tool that works with the CodeGeneration.Chorus nuget package.</Description>
 		<CodeAnalysisRuleSet>..\CodeGeneration.Chorus\CodeGeneration.Chorus.ruleset</CodeAnalysisRuleSet>
 		<NullableContextOptions>disable</NullableContextOptions>

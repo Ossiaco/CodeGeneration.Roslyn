@@ -13,9 +13,7 @@ namespace CodeGeneration.Chorus
     using System.Collections.Immutable;
     using System.Linq;
     using System.Reflection;
-    using System.Text;
     using System.Threading.Tasks;
-    using Validation;
 
     internal static class DocumentTransform
     {
@@ -36,9 +34,9 @@ namespace CodeGeneration.Chorus
 
         internal static async Task<(SyntaxTree, bool)> TransformAsync(ITransformationContext transformationContext, IEnumerable<MetaType> metaTypes)
         {
-            Requires.NotNull(transformationContext, nameof(transformationContext));
-            Requires.NotNull(transformationContext.Compilation, nameof(transformationContext.Compilation));
-            Requires.NotNull(metaTypes, nameof(metaTypes));
+            Guard.Throw.ArgumentNullException(transformationContext == null, nameof(transformationContext));
+            Guard.Throw.ArgumentNullException(transformationContext.Compilation == null, nameof(transformationContext.Compilation));
+            Guard.Throw.ArgumentNullException(metaTypes == null, nameof(metaTypes));
 
             var inputDocument = metaTypes.First().DeclarationSyntax.SyntaxTree;
             var compilation = transformationContext.Compilation;
@@ -105,9 +103,9 @@ namespace CodeGeneration.Chorus
 
         private static ImmutableArray<AttributeData> GetAttributeData(Compilation compilation, SemanticModel document, SyntaxNode syntaxNode)
         {
-            Requires.NotNull(compilation, nameof(compilation));
-            Requires.NotNull(document, nameof(document));
-            Requires.NotNull(syntaxNode, nameof(syntaxNode));
+            Guard.Throw.ArgumentNullException(compilation == null, nameof(compilation));
+            Guard.Throw.ArgumentNullException(document == null, nameof(document));
+            Guard.Throw.ArgumentNullException(syntaxNode == null, nameof(syntaxNode));
 
             switch (syntaxNode)
             {

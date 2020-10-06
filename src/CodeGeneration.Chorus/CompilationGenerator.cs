@@ -21,7 +21,6 @@ namespace CodeGeneration.Chorus
     using Microsoft.CodeAnalysis.Text;
     using Microsoft.Extensions.DependencyModel;
     using Microsoft.Extensions.DependencyModel.Resolution;
-    using Validation;
 
     internal interface ITransformationContext
     {
@@ -85,7 +84,7 @@ namespace CodeGeneration.Chorus
             });
             dependencyContext = DependencyContext.Default;
 
-            var loadContext = AssemblyLoadContext.GetLoadContext(GetType().GetTypeInfo().Assembly);
+            var loadContext = AssemblyLoadContext.GetLoadContext(GetType().GetTypeInfo().Assembly) ?? throw new ArgumentNullException(nameof(AssemblyLoadContext));
             loadContext.Resolving += ResolveAssembly;
         }
 
@@ -162,14 +161,14 @@ namespace CodeGeneration.Chorus
         /// <returns>The <see cref="Task"/></returns>
         public async Task GenerateAsync(IProgress<Diagnostic>? progress = null, CancellationToken cancellationToken = default)
         {
-            Verify.Operation(Compile != null, $"{nameof(Compile)} must be set first.");
-            Verify.Operation(ReferencePaths != null, $"{nameof(ReferencePaths)} must be set first.");
-            Verify.Operation(IntermediateOutputDirectory != null, $"{nameof(IntermediateOutputDirectory)} must be set first.");
-            Verify.Operation(GeneratorAssemblySearchPaths != null, $"{nameof(GeneratorAssemblySearchPaths)} must be set first.");
+            Guard.Throw.ArgumentNullException(Compile == null, $"{nameof(Compile)} must be set first.");
+            Guard.Throw.ArgumentNullException(ReferencePaths == null, $"{nameof(ReferencePaths)} must be set first.");
+            Guard.Throw.ArgumentNullException(IntermediateOutputDirectory == null, $"{nameof(IntermediateOutputDirectory)} must be set first.");
+            Guard.Throw.ArgumentNullException(GeneratorAssemblySearchPaths == null, $"{nameof(GeneratorAssemblySearchPaths)} must be set first.");
 
             this.progress = progress ?? new NullProgress<Diagnostic>();
             compilation = CreateCompilation(cancellationToken);
-            jsonSerializeableType = compilation.GetTypeByMetadataName(typeof(IJsonSerialize).FullName);
+            jsonSerializeableType = compilation.GetTypeByMetadataName(typeof(IJsonSerialize).FullName ?? throw new ArgumentNullException(nameof(Type.FullName)));
             responseMessageType = compilation.GetTypeByMetadataName("Chorus.Messaging.IResponseMessage");
             messageType = compilation.GetTypeByMetadataName("Chorus.Messaging.IMessage");
             vertexType = compilation.GetTypeByMetadataName("Chorus.Azure.Cosmos.IVertex");
@@ -190,7 +189,7 @@ namespace CodeGeneration.Chorus
             var directories = files.Keys.Select(v => Path.GetDirectoryName(v)).ToImmutableHashSet();
             foreach (var directorName in directories)
             {
-                if (!Directory.Exists(directorName))
+                if (directorName != null && !Directory.Exists(directorName))
                 {
                     Directory.CreateDirectory(directorName);
                 }
@@ -258,7 +257,7 @@ namespace CodeGeneration.Chorus
             };
 
             var result = ImmutableHashSet.CreateBuilder<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-            result.UnionWith(types.Select(t => compilation.GetTypeByMetadataName(t.FullName)).OfType<INamedTypeSymbol>());
+            result.UnionWith(types.Select(t => compilation.GetTypeByMetadataName(t.FullName ?? throw new ArgumentNullException(nameof(Type.FullName)))).OfType<INamedTypeSymbol>());
             return result.ToImmutable();
         }
 
@@ -309,14 +308,15 @@ namespace CodeGeneration.Chorus
 
         private CSharpCompilation CreateCompilation(CancellationToken cancellationToken)
         {
-            var compile = this.Compile ?? throw new ArgumentNullException(nameof(this.Compile));
+            Guard.Throw.ArgumentNullException(this.Compile == null, nameof(this.Compile));
+            Guard.Throw.ArgumentNullException(ReferencePaths == null, $"{nameof(ReferencePaths)} must be set first.");
 
             var compilation = CSharpCompilation.Create("codegen")
                 .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
                 .WithReferences(ReferencePaths.Select(p => MetadataReference.CreateFromFile(p)));
             var parseOptions = new CSharpParseOptions(preprocessorSymbols: PreprocessorSymbols);
 
-            foreach (var sourceFile in compile)
+            foreach (var sourceFile in this.Compile)
             {
                 using (var stream = File.OpenRead(sourceFile))
                 {
@@ -433,13 +433,13 @@ namespace CodeGeneration.Chorus
             if (assembliesByPath.ContainsKey(path))
                 return assembliesByPath[path];
 
-            var loadContext = AssemblyLoadContext.GetLoadContext(GetType().GetTypeInfo().Assembly);
+            var loadContext = AssemblyLoadContext.GetLoadContext(GetType().GetTypeInfo().Assembly) ?? throw new NullReferenceException(nameof(Assembly));
             var assembly = loadContext.LoadFromAssemblyPath(path);
 
             var newDependencyContext = DependencyContext.Load(assembly);
             if (newDependencyContext != null)
                 dependencyContext = dependencyContext.Merge(newDependencyContext);
-            var basePath = Path.GetDirectoryName(path);
+            var basePath = Path.GetDirectoryName(path) ?? throw new NullReferenceException("DirectoryName");
             if (!directoriesWithResolver.Contains(basePath))
             {
                 assemblyResolver = new CompositeCompilationAssemblyResolver(new ICompilationAssemblyResolver[]

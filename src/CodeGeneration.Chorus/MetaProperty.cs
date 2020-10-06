@@ -334,9 +334,9 @@ namespace CodeGeneration.Chorus
 
         private class Comparer : IEqualityComparer<MetaProperty>
         {
-            public bool Equals(MetaProperty x, MetaProperty y)
+            public bool Equals(MetaProperty? x, MetaProperty? y)
             {
-                return SymbolEqualityComparer.Default.Equals(x.Symbol, y.Symbol);
+                return SymbolEqualityComparer.Default.Equals(x?.Symbol, y?.Symbol);
             }
 
             public int GetHashCode(MetaProperty obj)
@@ -347,9 +347,9 @@ namespace CodeGeneration.Chorus
 
         private class NameTypeComparer : IEqualityComparer<MetaProperty>
         {
-            public bool Equals(MetaProperty x, MetaProperty y)
+            public bool Equals(MetaProperty? x, MetaProperty? y)
             {
-                return x.Symbol.Name.Equals(y.Symbol.Name) && SymbolEqualityComparer.Default.Equals(x.Symbol.Type, y.Symbol.Type);
+                return (x?.Symbol.Name.Equals(y?.Symbol.Name) ?? false) && SymbolEqualityComparer.Default.Equals(x?.Symbol.Type, y?.Symbol.Type);
             }
 
             public int GetHashCode(MetaProperty obj)

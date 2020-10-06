@@ -9,7 +9,6 @@
 //------------------------------------------------------------------------------
 
 namespace CodeGeneration.Chorus.Tool.CommandLine {
-    using System;
     
     
     /// <summary>

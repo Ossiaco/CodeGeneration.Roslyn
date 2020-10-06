@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>netstandard2.0</TargetFramework>
+		<TargetFramework>net5.0</TargetFramework>
 		<CodeAnalysisRuleSet>.\CodeGeneration.Chorus.ruleset</CodeAnalysisRuleSet>
 		<SignAssembly>false</SignAssembly>
 		<NullableContextOptions>disable</NullableContextOptions>
@@ -96,7 +96,6 @@
 		<PackageReference Include="Microsoft.VisualStudio.Validation" Version="$(MicrosoftVisualStudioValidationPackageVersion)" />
 		<PackageReference Include="Microsoft.Extensions.DependencyModel" Version="$(MicrosoftExtensionsDependencyModelPackageVersion)" />
 		<PackageReference Include="System.Runtime.Loader" Version="$(SystemRuntimeLoaderPackageVersion)" />
-		<PackageReference Include="Validation" Version="$(ValidationPackageVersion)" />
 	</ItemGroup>
 
 
