@@ -97,13 +97,9 @@ namespace CodeGeneration.Chorus.Json
             // innerMembers.AddRange(IEquatableImplementation(properties, directAncestor));
 
             var partialClass = ClassDeclaration(this.metaType.ClassNameIdentifier)
+                 .AddBaseListTypes(this.metaType.SemanticModel.AsFullyQualifiedBaseType(this.metaType).ToArray())
                  .WithModifiers(this.metaType.DeclarationSyntax.Modifiers)
                  .WithMembers(List(innerMembers));
-            var basetypes = this.metaType.SemanticModel.AsFullyQualifiedBaseType(this.metaType).ToArray();
-            if (basetypes.Length > 0)
-            {
-                partialClass = partialClass.AddBaseListTypes(basetypes);
-            }
 
             if (isAbstract)
             {

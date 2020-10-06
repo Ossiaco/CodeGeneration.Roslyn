@@ -58,19 +58,20 @@ namespace CodeGeneration.Chorus
                 }
             }
 
-            /*
+
             var interfaceType = (TypeSyntax)ParseName(value.Identifier.ValueText);
-            var classType = (TypeSyntax)ParseName(metaType.ClassNameIdentifier.ValueText);
-
-            var IEquatableType = Identifier("System.IEquatable");
-
             if (!metaType.IsIncompleteClass)
             {
                 yield return SimpleBaseType(interfaceType);
             }
+
+            /*
+            var classType = (TypeSyntax)ParseName(metaType.ClassNameIdentifier.ValueText);
+            var IEquatableType = Identifier("System.IEquatable");
             yield return SimpleBaseType(GenericName(IEquatableType, TypeArgumentList(SingletonSeparatedList(interfaceType))));
             yield return SimpleBaseType(GenericName(IEquatableType, TypeArgumentList(SingletonSeparatedList(classType))));
             */
+
         }
 
         internal static MemberAccessExpressionSyntax BaseDot(SimpleNameSyntax memberAccess)
