@@ -57,8 +57,11 @@ namespace CodeGeneration.Chorus
                     yield return SimpleBaseType(typeSyntax);
                 }
             }
+
+            /*
             var interfaceType = (TypeSyntax)ParseName(value.Identifier.ValueText);
             var classType = (TypeSyntax)ParseName(metaType.ClassNameIdentifier.ValueText);
+
             var IEquatableType = Identifier("System.IEquatable");
 
             if (!metaType.IsIncompleteClass)
@@ -67,6 +70,7 @@ namespace CodeGeneration.Chorus
             }
             yield return SimpleBaseType(GenericName(IEquatableType, TypeArgumentList(SingletonSeparatedList(interfaceType))));
             yield return SimpleBaseType(GenericName(IEquatableType, TypeArgumentList(SingletonSeparatedList(classType))));
+            */
         }
 
         internal static MemberAccessExpressionSyntax BaseDot(SimpleNameSyntax memberAccess)
