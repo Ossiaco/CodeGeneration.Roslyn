@@ -25,7 +25,7 @@
 
 
 	<ItemGroup>
-		<None Include="build/**">
+		<None Include="Sdk/**">
 			<Pack>true</Pack>
 			<PackagePath>build/</PackagePath>
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
