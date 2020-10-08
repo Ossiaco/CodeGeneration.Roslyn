@@ -134,7 +134,6 @@
                 return null;
             }
 
-            var parent = GetFullyQualifiedSymbolName(symbol.ContainingSymbol as INamespaceOrTypeSymbol, NullableAnnotation.None) as NameSyntax;
             SimpleNameSyntax leafName = SyntaxFactory.IdentifierName(symbol.Name);
             var typeSymbol = symbol as INamedTypeSymbol;
             if (typeSymbol != null && typeSymbol.IsGenericType)
@@ -151,7 +150,7 @@
                     .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, args)));
             }
 
-            TypeSyntax result = parent != null ? (NameSyntax)SyntaxFactory.QualifiedName(parent, leafName) : leafName;
+            TypeSyntax result = GetFullyQualifiedSymbolName(symbol.ContainingSymbol as INamespaceOrTypeSymbol, NullableAnnotation.None) is NameSyntax parent ? (NameSyntax)SyntaxFactory.QualifiedName(parent, leafName) : leafName;
             return nullableAnnotation == NullableAnnotation.Annotated && (typeSymbol?.IsReferenceType ?? false) ? SyntaxFactory.NullableType(result) : result;
         }
 

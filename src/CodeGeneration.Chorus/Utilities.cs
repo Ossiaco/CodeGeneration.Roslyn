@@ -11,13 +11,13 @@
         internal static string ToPascalCase(this string name)
         {
             // Requires.NotNullOrEmpty(name, "name");
-            return name.Substring(0, 1).ToUpperInvariant() + name.Substring(1);
+            return name.Substring(0, 1).ToUpperInvariant() + name[1..];
         }
 
         internal static string ToCamelCase(this string name)
         {
             // Requires.NotNullOrEmpty(name, "name");
-            return name.Substring(0, 1).ToLowerInvariant() + name.Substring(1);
+            return name.Substring(0, 1).ToLowerInvariant() + name[1..];
         }
 
         internal static string ToPlural(this string word)

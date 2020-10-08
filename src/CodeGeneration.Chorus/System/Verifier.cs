@@ -70,5 +70,23 @@ namespace System
             Guard.Throw.ArgumentNullException(string.IsNullOrEmpty(value), paramName, message);
             return value;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T IsNotNull<T>(T? value, string paramName, string? message = null)
+            where T : class
+        {
+            Guard.Throw.NullReferenceException(value == null, message ?? $"{paramName} cannot be null");
+            return value;
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T IsNotNull<T>(T? value, string paramName, string? message = null)
+            where T : struct
+        {
+            Guard.Throw.NullReferenceException(value == null, message ?? $"{paramName} cannot be null");
+            return value.Value;
+        }
+
     }
 }

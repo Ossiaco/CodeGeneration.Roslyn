@@ -37,7 +37,7 @@ namespace CodeGeneration.Chorus
         {
             if (value.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
-                var baseClass = IdentifierName(Identifier(nameSyntax.Identifier.ValueText.Substring(1)));
+                var baseClass = IdentifierName(Identifier(nameSyntax.Identifier.ValueText[1..]));
                 yield return SimpleBaseType(baseClass);
             }
             yield return SimpleBaseType(ParseName(value.Identifier.ValueText));
@@ -50,9 +50,9 @@ namespace CodeGeneration.Chorus
             if (value.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
                 var typeSymbol = ((INamedTypeSymbol?)model.GetTypeInfo(nameSyntax).Type);
-                if (typeSymbol!= null && !SymbolEqualityComparer.Default.Equals(typeSymbol, context.JsonSerializeableType))
+                if (typeSymbol != null && !SymbolEqualityComparer.Default.Equals(typeSymbol, context.JsonSerializeableType))
                 {
-                    SimpleNameSyntax leafName = IdentifierName(typeSymbol.Name.Substring(1));
+                    SimpleNameSyntax leafName = IdentifierName(typeSymbol.Name[1..]);
                     TypeSyntax typeSyntax = (typeSymbol.ContainingSymbol as INamespaceOrTypeSymbol)?.GetFullyQualifiedSymbolName(NullableAnnotation.None) is NameSyntax parent ? (NameSyntax)QualifiedName(parent, leafName) : leafName;
                     yield return SimpleBaseType(typeSyntax);
                 }
@@ -65,13 +65,12 @@ namespace CodeGeneration.Chorus
                 yield return SimpleBaseType(interfaceType);
             }
 
-            /*
-            var classType = (TypeSyntax)ParseName(metaType.ClassNameIdentifier.ValueText);
-            var IEquatableType = Identifier("System.IEquatable");
-            yield return SimpleBaseType(GenericName(IEquatableType, TypeArgumentList(SingletonSeparatedList(interfaceType))));
-            yield return SimpleBaseType(GenericName(IEquatableType, TypeArgumentList(SingletonSeparatedList(classType))));
-            */
-
+            if (metaType.IsIEquatable)
+            {
+                var classType = (TypeSyntax)ParseName(metaType.ClassNameIdentifier.ValueText);
+                yield return SimpleBaseType(IEquatableOf(interfaceType));
+                yield return SimpleBaseType(IEquatableOf(classType));
+            }
         }
 
         internal static MemberAccessExpressionSyntax BaseDot(SimpleNameSyntax memberAccess)
@@ -87,7 +86,7 @@ namespace CodeGeneration.Chorus
             return expressions.Aggregate((ExpressionSyntax?)null, (agg, e) => agg != null ? BinaryExpression(binaryOperator, agg, e) : e);
         }
 
-        internal static IdentifierNameSyntax ClassName(this InterfaceDeclarationSyntax value) => IdentifierName(Identifier(value.Identifier.ValueText.Substring(1)));
+        internal static IdentifierNameSyntax ClassName(this InterfaceDeclarationSyntax value) => IdentifierName(Identifier(value.Identifier.ValueText[1..]));
 
         internal static ImmutableArray<DeclarationInfo> ComputeDeclarationsInSpan(this SemanticModel model, TextSpan span, bool getSymbol, CancellationToken cancellationToken)
         {
@@ -229,6 +228,31 @@ namespace CodeGeneration.Chorus
                     TypeArgumentList(SingletonSeparatedList(typeSyntax))));
         }
 
+        internal static MemberAccessExpressionSyntax StructuralEquatable()
+        {
+            var typeName = QualifiedName(
+                    QualifiedName(
+                        IdentifierName(nameof(System)),
+                        IdentifierName(nameof(System.Collections))),
+                IdentifierName(
+                    Identifier(nameof(System.Collections.StructuralComparisons))));
+
+            return MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, typeName, IdentifierName(nameof(System.Collections.StructuralComparisons.StructuralEqualityComparer)));
+
+        }
+
+        internal static CastExpressionSyntax CastAsIStructuralEquatable(ExpressionSyntax typeSyntax)
+        {
+            var typeName = QualifiedName(
+                    QualifiedName(
+                        IdentifierName(nameof(System)),
+                        IdentifierName(nameof(System.Collections))),
+                IdentifierName(
+                    Identifier(nameof(System.Collections.IStructuralEquatable))));
+
+            return CastExpression(typeName, typeSyntax);
+        }
+
         internal static NameSyntax ImmutableStackOf(TypeSyntax typeSyntax)
         {
             return QualifiedName(
@@ -267,6 +291,7 @@ namespace CodeGeneration.Chorus
                     Identifier(nameof(IReadOnlyList<int>)),
                     TypeArgumentList(SingletonSeparatedList(elementType))));
         }
+
 
         internal static SeparatedSyntaxList<T> JoinSyntaxNodes<T>(SyntaxKind tokenDelimiter, IEnumerable<T> nodes)
             where T : SyntaxNode

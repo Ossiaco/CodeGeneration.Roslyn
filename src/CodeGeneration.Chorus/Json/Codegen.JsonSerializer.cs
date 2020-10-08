@@ -1,5 +1,6 @@
 ﻿namespace CodeGeneration.Chorus.Json
 {
+    using System.Buffers;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
@@ -13,11 +14,10 @@
         public static ExpressionSyntax FormatValue(TypedConstant constant)
         {
             //TODO: add hex formatting
-            switch (constant.Type)
+            return constant.Type switch
             {
-                default:
-                    return (ExpressionSyntax)Syntax.Generator.TypedConstantExpression(constant);
-            }
+                _ => (ExpressionSyntax)Syntax.Generator.TypedConstantExpression(constant),
+            };
         }
 
         private static SwitchExpressionArmSyntax GetArm(MetaType descendent, INamedTypeSymbol abstractAtrribute)
@@ -195,7 +195,7 @@
         private static readonly TypeSyntax _byteType = PredefinedType(Token(SyntaxKind.ByteKeyword));
         private static readonly TypeSyntax _intType = PredefinedType(Token(SyntaxKind.IntKeyword));
         private static readonly TypeSyntax _stringType = PredefinedType(Token(SyntaxKind.StringKeyword));
-        private static readonly TypeSyntax _bufferWriterType = GenericName(Identifier("IBufferWriter"), TypeArgumentList(SingletonSeparatedList(_byteType)));
+        private static readonly TypeSyntax _bufferWriterType = GenericName(Identifier(nameof(IBufferWriter<byte>)), TypeArgumentList(SingletonSeparatedList(_byteType)));
         private static readonly TypeSyntax _utf8JsonWriterType = ParseName(nameof(System.Text.Json.Utf8JsonWriter));
 
         private static readonly ParameterSyntax _utf8JsonWriterParameter = Parameter(_writerName.Identifier).WithType(_utf8JsonWriterType);
@@ -206,8 +206,8 @@
         private static readonly ParameterSyntax _objectParameter = Parameter(_objName.Identifier).WithType(_objectType);
         private static readonly ParameterSyntax _nullableObjectParameter = Parameter(_objName.Identifier).WithType(NullableType(_objectType));
 
-        private static readonly SyntaxToken _getHashCodeIdentifier = Identifier($"GetHashCode");
-        private static readonly SyntaxToken _equalsIdentifier = Identifier($"Equals");
+        private static readonly SyntaxToken _getHashCodeIdentifier = Identifier(nameof(object.GetHashCode));
+        private static readonly SyntaxToken _equalsIdentifier = Identifier(nameof(object.Equals));
         private static readonly SyntaxToken _valueIdentifier = Identifier($"value");
         #endregion
 

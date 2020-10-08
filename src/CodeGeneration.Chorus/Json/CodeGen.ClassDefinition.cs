@@ -60,7 +60,7 @@ namespace CodeGeneration.Chorus.Json
 
             var abstractImplementations = await this.metaType.GetPropertyOverridesAsync();
             var isAbstract = await this.metaType.IsAbstractTypeAsync();
-            var isSealed = isAbstract ? false : partialImplementation?.TypeSymbol.IsSealed ?? false || !(await this.metaType.HasDescendentsAsync());
+            var isSealed = !isAbstract && (partialImplementation?.TypeSymbol.IsSealed ?? false || !(await this.metaType.HasDescendentsAsync()));
             var localProperties = await this.metaType.GetLocalPropertiesAsync();
             var directAncestor = await this.metaType.GetDirectAncestorAsync();
 
@@ -94,7 +94,10 @@ namespace CodeGeneration.Chorus.Json
                 innerMembers.Add(await ToJsonMethodAsync(isSealed, properties));
             }
 
-            // innerMembers.AddRange(IEquatableImplementation(properties, directAncestor));
+            if (this.metaType.IsIEquatable)
+            {
+                innerMembers.AddRange(IEquatableImplementation(directAncestor.IsIEquatable ? properties : await this.metaType.GetAllPropertiesAsync(), directAncestor));
+            }
 
             var partialClass = ClassDeclaration(this.metaType.ClassNameIdentifier)
                  .AddBaseListTypes(this.metaType.SemanticModel.AsFullyQualifiedBaseType(this.metaType).ToArray())
@@ -136,7 +139,7 @@ namespace CodeGeneration.Chorus.Json
 
         private TupleExpressionSyntax GetAsTuple(ImmutableHashSet<MetaProperty> properties, ExpressionSyntax? expreession = null)
         {
-            expreession = expreession ?? ThisExpression();
+            expreession ??= ThisExpression();
 
             ArgumentSyntax GetTupleArgument(MetaProperty metaProperty) => Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, expreession, IdentifierName(metaProperty.Symbol.Name)));
             var arguments = properties.Select(GetTupleArgument);
@@ -164,8 +167,8 @@ namespace CodeGeneration.Chorus.Json
             var aIdentifierName = IdentifierName("a");
             var bIdentifierName = IdentifierName("b");
             var baseIdentifierName = IdentifierName("base");
-            var equalsIdentifierName = IdentifierName("Equals");
-            var getHashCodeIdentifierName = IdentifierName("GetHashCode");
+            var equalsIdentifierName = IdentifierName(nameof(object.Equals));
+            var getHashCodeIdentifierName = IdentifierName(nameof(object.GetHashCode));
 
             var ancestorType = ancestor.IsDefault ? _objectType : ancestor.TypeSyntax;
             var interfaceType = ParseName(this.metaType.DeclarationSyntax.Identifier.ValueText);
@@ -189,54 +192,60 @@ namespace CodeGeneration.Chorus.Json
 
             conditionalExpression = ConditionalExpression(IsPatternExpression(_otherName, DeclarationPattern(interfaceType, SingleVariableDesignation(_valueIdentifier))), whenTrue, whenFalse);
 
-            // public override bool Equals(<classType> other) => other is <interfaceType> value ? this.Equals(value) : false;
+            // public override bool Equals(<classType>? other) => other is <interfaceType> value ? this.Equals(value) : false;
             yield return MethodDeclaration(_boolType, _equalsIdentifier)
                    .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                   .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(_otherName.Identifier).WithType(classType) })))
+                   .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(_otherName.Identifier).WithType(NullableType(classType)) })))
                    .WithExpressionBody(ArrowExpressionClause(conditionalExpression))
                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
-
+            // base.Equals((<base type>)value)
             var baseEquals = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, baseIdentifierName, equalsIdentifierName)
                    .WithOperatorToken(Token(SyntaxKind.DotToken)))
                    .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(CastExpression(ancestorType, _valueName)) }))
                        .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
                        .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
 
+            // ((IStructuralEquatable)(0, this.<p1>, this.<p2>, this.<p3>, ...))
+            var structuralEquatable = ParenthesizedExpression(Syntax.CastAsIStructuralEquatable(GetAsTuple(properties)));
             if (properties.Count > 0)
             {
-                whenTrue = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, GetAsTuple(properties), equalsIdentifierName)
+                // (0, value.<p1>, value.<p2>, value.<p3>, ...)
+                var otherTuple = GetAsTuple(properties, _valueName);
+                // <structuralEquatable>.Equals(<otherTuple>, StructuralComparisons.StructuralEqualityComparer)
+                whenTrue = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, structuralEquatable, equalsIdentifierName)
                    .WithOperatorToken(Token(SyntaxKind.DotToken)))
-                   .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(GetAsTuple(properties, _otherName)) }))
+                   .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(otherTuple), Argument(Syntax.StructuralEquatable()) }))
                        .WithOpenParenToken(Token(SyntaxKind.OpenParenToken))
                        .WithCloseParenToken(Token(SyntaxKind.CloseParenToken)));
 
-                if (!ancestor.IsDefault)
+                if (ancestor.IsIEquatable)
                 {
                     whenTrue = BinaryExpression(SyntaxKind.LogicalAndExpression, baseEquals, whenTrue);
                 }
             }
-            else if (ancestor.IsDefault)
+            else if (ancestor.IsIEquatable)
             {
-                whenTrue = LiteralExpression(SyntaxKind.FalseLiteralExpression, Token(SyntaxKind.TrueKeyword));
+                whenTrue = baseEquals;
             }
             else
             {
-                whenTrue = baseEquals;
+                whenTrue = LiteralExpression(SyntaxKind.FalseLiteralExpression, Token(SyntaxKind.TrueKeyword));
             }
 
             conditionalExpression = ConditionalExpression(IsPatternExpression(_otherName, DeclarationPattern(interfaceType, SingleVariableDesignation(_valueIdentifier))), whenTrue, whenFalse);
 
-            // public override bool Equals(<interfaceType> other) => other is <interfaceType> value ? <tuple.Equals> : false;
+            // public override bool Equals(<interfaceType>? other) => other is <interfaceType> value ? <tuple.Equals> : false;
             yield return MethodDeclaration(_boolType, _equalsIdentifier)
                    .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                   .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(_otherName.Identifier).WithType(interfaceType) })))
+                   .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Parameter(_otherName.Identifier).WithType(NullableType(interfaceType)) })))
                    .WithExpressionBody(ArrowExpressionClause(conditionalExpression))
                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
-
-            whenTrue = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, GetAsTuple(properties), getHashCodeIdentifierName)
-                .WithOperatorToken(Token(SyntaxKind.DotToken)));
+            // <structuralEquatable>.GetHashCode(StructuralComparisons.StructuralEqualityComparer)
+            whenTrue = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, structuralEquatable, getHashCodeIdentifierName)
+                .WithOperatorToken(Token(SyntaxKind.DotToken)))
+                .WithArgumentList(ArgumentList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { Argument(Syntax.StructuralEquatable()) })));
 
             var baseGetHashCode = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, baseIdentifierName, getHashCodeIdentifierName)
                .WithOperatorToken(Token(SyntaxKind.DotToken)));
@@ -248,13 +257,13 @@ namespace CodeGeneration.Chorus.Json
                     whenTrue = baseGetHashCode;
                 }
 
-                // public override int GetHashCode() => <tuple>.GetHashCode();
+                // public override int GetHashCode() => <thisTuple>.GetHashCode(StructuralComparisons.StructuralEqualityComparer);
                 yield return MethodDeclaration(_intType, _getHashCodeIdentifier)
                        .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.OverrideKeyword))
                        .WithExpressionBody(ArrowExpressionClause(whenTrue))
                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
             }
-            else
+            else if (ancestor.IsIEquatable)
             {
                 var multiply = BinaryExpression(SyntaxKind.MultiplyExpression, baseGetHashCode, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(16777619)));
                 var body = CheckedStatement(SyntaxKind.UncheckedStatement, Block(ReturnStatement(BinaryExpression(SyntaxKind.AddExpression, multiply, whenTrue))));
@@ -262,6 +271,14 @@ namespace CodeGeneration.Chorus.Json
                 yield return MethodDeclaration(_intType, _getHashCodeIdentifier)
                       .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.OverrideKeyword))
                       .WithBody(Block(body));
+            }
+            else
+            {
+                yield return MethodDeclaration(_intType, _getHashCodeIdentifier)
+                       .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.OverrideKeyword))
+                       .WithExpressionBody(ArrowExpressionClause(whenTrue))
+                       .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
             }
 
 
@@ -311,7 +328,7 @@ namespace CodeGeneration.Chorus.Json
 
         private async Task<IEnumerable<MemberDeclarationSyntax>> JsonCtorAsync(bool hasAncestor, bool isSealed)
         {
-            bool IsRequired(MetaProperty prop) => prop.IsIgnored || this.metaType.AbstractJsonProperty == prop.Name ? false : true;
+            bool IsRequired(MetaProperty prop) => !prop.IsIgnored && this.metaType.AbstractJsonProperty != prop.Name;
 
             var paramName = IdentifierName("json");
             var param = Parameter(paramName.Identifier).WithType(ParseName(nameof(System.Text.Json.JsonElement)));
@@ -506,7 +523,7 @@ namespace CodeGeneration.Chorus.Json
                                );
             }
 
-            bool IsRequired(MetaProperty prop)
+            static bool IsRequired(MetaProperty prop)
             {
                 return !prop.IsIgnored;
             }

@@ -6,6 +6,7 @@
 
 namespace CodeGeneration.Chorus
 {
+    using System;
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Diagnostics;
@@ -79,12 +80,30 @@ namespace CodeGeneration.Chorus
 
             if (declarationSyntax != null)
             {
-                var fi = Path.Combine(context.IntermediateOutputDirectory, declarationSyntax.SyntaxTree.FilePath.Substring(context.RootLength));
+                var fi = Path.Combine(context.IntermediateOutputDirectory, declarationSyntax.SyntaxTree.FilePath[context.RootLength..]);
                 OutputFilePath = Path.Combine(Path.GetDirectoryName(fi), Path.GetFileNameWithoutExtension(fi) + $".generated.cs");
             }
 
             IsJsonSerializable = IsAssignableFrom(TransformationContext.JsonSerializeableType);
+            if (typeSymbol != null)
+            {
+                try
+                {
+                    var equatableType = TransformationContext.IIEquatableType.Construct(typeSymbol);
+                    IsIEquatable = typeSymbol.AllInterfaces.Contains(equatableType);
+                }
+                catch (ArgumentException e) when (string.Compare(e.Message, "Syntax node is not within syntax tree") == 0)
+                {
+                    IsIEquatable = false;
+                }
+            }
+            else
+            {
+                IsIEquatable = false;
+            }
         }
+
+        public bool IsIEquatable { get; } = false;
 
         public INamedTypeSymbol AbstractAttribute { get; }
 
@@ -102,7 +121,7 @@ namespace CodeGeneration.Chorus
         public BaseTypeDeclarationSyntax DeclarationSyntax { get; }
 
         public IdentifierNameSyntax FullyQualifiedClassName => (DeclarationSyntax is InterfaceDeclarationSyntax)
-            ? SyntaxFactory.IdentifierName(SyntaxFactory.Identifier($"{TypeSymbol.ContainingNamespace}.{TypeSymbol.Name.Substring(1)}"))
+            ? SyntaxFactory.IdentifierName(SyntaxFactory.Identifier($"{TypeSymbol.ContainingNamespace}.{TypeSymbol.Name[1..]}"))
             : SyntaxFactory.IdentifierName(SyntaxFactory.Identifier($"{TypeSymbol.ContainingNamespace}.{TypeSymbol.Name}"));
 
         public bool HasAbstractJsonProperty { get; }
@@ -122,7 +141,7 @@ namespace CodeGeneration.Chorus
 
         public bool IsJsonSerializable { get; }
 
-        public bool IsPartialClass => (_isPartialClass ?? (_isPartialClass = TypeSymbol.IsReferenceType && (DeclarationSyntax?.Modifiers.Any(SyntaxKind.PartialKeyword) ?? false))).Value;
+        public bool IsPartialClass => ((bool?)(_isPartialClass ??= TypeSymbol.IsReferenceType && (DeclarationSyntax?.Modifiers.Any(SyntaxKind.PartialKeyword) ?? false))).Value;
 
         public JsonStringEnumFormat JsonStringEnumFormat { get; }
 
@@ -150,9 +169,9 @@ namespace CodeGeneration.Chorus
 
         public override bool Equals(object obj)
         {
-            if (obj is MetaType)
+            if (obj is MetaType type)
             {
-                return Equals((MetaType)obj);
+                return Equals(type);
             }
 
             return false;

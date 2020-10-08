@@ -276,7 +276,7 @@ namespace CodeGeneration.Chorus
             return type;
         }
 
-        private static string GetSafeTypeClassName(ITypeSymbol t) => t.TypeKind == TypeKind.Interface ? t.Name.Substring(1) : t.Name;
+        private static string GetSafeTypeClassName(ITypeSymbol t) => t.TypeKind == TypeKind.Interface ? t.Name[1..] : t.Name;
 
         private static string GetSafeTypeName(ITypeSymbol type)
         {

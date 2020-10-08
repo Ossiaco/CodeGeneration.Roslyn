@@ -65,7 +65,7 @@ namespace CodeGeneration.Chorus
 
             while (end != -1)
             {
-                Print(message.Substring(begin, end - begin));
+                Print(message[begin..end]);
                 begin = end + (foundR ? 2 : 1);
                 end = message.IndexOf('\n', begin);
                 foundR = end > 0 && message[end - 1] == '\r';
@@ -75,7 +75,7 @@ namespace CodeGeneration.Chorus
                 }
             }
 
-            Print(message.Substring(begin, message.Length - begin));
+            Print(message[begin..]);
 
             void Print(string toPrint)
             {

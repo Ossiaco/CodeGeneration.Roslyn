@@ -28,6 +28,8 @@ namespace CodeGeneration.Chorus
 
         CSharpCompilation Compilation { get; }
 
+        INamedTypeSymbol IIEquatableType { get; }
+
         string IntermediateOutputDirectory { get; }
 
         ImmutableHashSet<INamedTypeSymbol> IntrinsicSymbols { get; }
@@ -64,6 +66,7 @@ namespace CodeGeneration.Chorus
         private CSharpCompilation? compilation;
         private DependencyContext dependencyContext;
         private ImmutableHashSet<string> generatedFiles = ImmutableHashSet<string>.Empty;
+        private INamedTypeSymbol? iEquatableType;
         private ImmutableHashSet<INamedTypeSymbol>? intrinsicSymbols;
         private INamedTypeSymbol? jsonSerializeableType;
         private INamedTypeSymbol? messageType;
@@ -91,6 +94,8 @@ namespace CodeGeneration.Chorus
         ImmutableDictionary<INamedTypeSymbol, MetaType> ITransformationContext.AllNamedTypeSymbols => this.allNamedTypeSymbols ?? throw new ArgumentNullException(nameof(this.allNamedTypeSymbols));
 
         CSharpCompilation ITransformationContext.Compilation => this.compilation ?? throw new ArgumentNullException(nameof(this.compilation));
+
+        INamedTypeSymbol ITransformationContext.IIEquatableType => this.iEquatableType ?? throw new ArgumentNullException(nameof(this.iEquatableType));
 
         string ITransformationContext.IntermediateOutputDirectory => this.IntermediateOutputDirectory ?? throw new ArgumentNullException(nameof(this.IntermediateOutputDirectory));
 
@@ -161,14 +166,15 @@ namespace CodeGeneration.Chorus
         /// <returns>The <see cref="Task"/></returns>
         public async Task GenerateAsync(IProgress<Diagnostic>? progress = null, CancellationToken cancellationToken = default)
         {
-            Guard.Throw.ArgumentNullException(Compile == null, $"{nameof(Compile)} must be set first.");
-            Guard.Throw.ArgumentNullException(ReferencePaths == null, $"{nameof(ReferencePaths)} must be set first.");
-            Guard.Throw.ArgumentNullException(IntermediateOutputDirectory == null, $"{nameof(IntermediateOutputDirectory)} must be set first.");
-            Guard.Throw.ArgumentNullException(GeneratorAssemblySearchPaths == null, $"{nameof(GeneratorAssemblySearchPaths)} must be set first.");
+            var compile = Guard.Verify.IsNotNull(Compile, nameof(Compile));
+            var referencePath = Guard.Verify.IsNotNull(ReferencePaths, nameof(ReferencePaths));
+            var intermediateOutputDirectory = Guard.Verify.IsNotNull(IntermediateOutputDirectory, nameof(IntermediateOutputDirectory));
+            var generatorAssemblySearchPaths = Guard.Verify.IsNotNull(GeneratorAssemblySearchPaths, nameof(GeneratorAssemblySearchPaths));
 
             this.progress = progress ?? new NullProgress<Diagnostic>();
             compilation = CreateCompilation(cancellationToken);
-            jsonSerializeableType = compilation.GetTypeByMetadataName(typeof(IJsonSerialize).FullName ?? throw new ArgumentNullException(nameof(Type.FullName)));
+            jsonSerializeableType = Guard.Verify.IsNotNull(compilation.GetTypeByMetadataName(Guard.Verify.IsNotEmptyOrNull(typeof(IJsonSerialize).FullName, nameof(Type.FullName))), nameof(INamedTypeSymbol));
+            iEquatableType = Guard.Verify.IsNotNull(compilation.GetTypeByMetadataName(Guard.Verify.IsNotEmptyOrNull(typeof(IEquatable<>).FullName, nameof(Type.FullName))), nameof(INamedTypeSymbol));
             responseMessageType = compilation.GetTypeByMetadataName("Chorus.Messaging.IResponseMessage");
             messageType = compilation.GetTypeByMetadataName("Chorus.Messaging.IMessage");
             vertexType = compilation.GetTypeByMetadataName("Chorus.Azure.Cosmos.IVertex");
@@ -176,7 +182,7 @@ namespace CodeGeneration.Chorus
 
             var generatedFiles = this.generatedFiles.ToBuilder();
 
-            var generatorAssemblyInputsFile = Path.Combine(IntermediateOutputDirectory, InputAssembliesIntermediateOutputFileName);
+            var generatorAssemblyInputsFile = Path.Combine(intermediateOutputDirectory, InputAssembliesIntermediateOutputFileName);
 
             // For incremental build, we want to consider the input->output files as well as the assemblies involved in code generation.
             var assembliesLastModified = GetLastModifiedAssemblyTime(generatorAssemblyInputsFile);
@@ -257,7 +263,7 @@ namespace CodeGeneration.Chorus
             };
 
             var result = ImmutableHashSet.CreateBuilder<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-            result.UnionWith(types.Select(t => compilation.GetTypeByMetadataName(t.FullName ?? throw new ArgumentNullException(nameof(Type.FullName)))).OfType<INamedTypeSymbol>());
+            result.UnionWith(types.Select(t => compilation.GetTypeByMetadataName(Guard.Verify.IsNotEmptyOrNull(t.FullName, nameof(Type.FullName)))).OfType<INamedTypeSymbol>());
             return result.ToImmutable();
         }
 
@@ -318,17 +324,15 @@ namespace CodeGeneration.Chorus
 
             foreach (var sourceFile in this.Compile)
             {
-                using (var stream = File.OpenRead(sourceFile))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var text = SourceText.From(stream);
-                    compilation = compilation.AddSyntaxTrees(
-                        CSharpSyntaxTree.ParseText(
-                            text,
-                            parseOptions,
-                            sourceFile,
-                            cancellationToken));
-                }
+                using var stream = File.OpenRead(sourceFile);
+                cancellationToken.ThrowIfCancellationRequested();
+                var text = SourceText.From(stream);
+                compilation = compilation.AddSyntaxTrees(
+                    CSharpSyntaxTree.ParseText(
+                        text,
+                        parseOptions,
+                        sourceFile,
+                        cancellationToken));
             }
 
             return compilation;
@@ -523,7 +527,7 @@ namespace CodeGeneration.Chorus
                         {
                             using var outputWriter = new StreamWriter(outputFileStream);
                             var outputText = await generatedSyntaxTree.GetTextAsync(cancellationToken);
-                            outputText.Write(outputWriter);
+                            outputText.Write(outputWriter, cancellationToken);
                             await outputWriter.FlushAsync();
                             outputFileStream.SetLength(outputFileStream.Position);
                         }
@@ -536,7 +540,7 @@ namespace CodeGeneration.Chorus
                     catch (IOException ex) when (ex.HResult == ProcessCannotAccessFileHR && retriesLeft > 0)
                     {
                         retriesLeft--;
-                        await Task.Delay(200).ConfigureAwait(false);
+                        await Task.Delay(200, cancellationToken).ConfigureAwait(false);
                     }
                 }
                 while (true);
