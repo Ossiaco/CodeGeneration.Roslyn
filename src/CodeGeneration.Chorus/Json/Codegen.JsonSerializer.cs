@@ -86,7 +86,13 @@
 
             var allDescendents = await metaType.GetRecursiveDescendentsAsync();
 
-            var validDescendents = allDescendents.Where(d => d.TypeSymbol.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, abstractMetaType.AbstractAttribute)));
+            var validDescendents = allDescendents.Where(d => d.TypeSymbol.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, abstractMetaType.AbstractAttribute))); ;
+            if (!this.metaType.IsAssignableFrom(this.context.VertexRequestType))
+            {
+                // exclude IVertexRequest derivation 
+                validDescendents = validDescendents.Where(t => !t.IsAssignableFrom(this.context.VertexRequestType));
+            }
+
             var arms = validDescendents.Select(t => GetArm(t, abstractMetaType.AbstractAttribute)).ToList();
             arms.Add(defaultThrow);
 
