@@ -84,6 +84,10 @@ namespace CodeGeneration.Chorus
                 OutputFilePath = Path.Combine(Path.GetDirectoryName(fi), Path.GetFileNameWithoutExtension(fi) + $".generated.cs");
             }
 
+            if(typeSymbol?.Name == "IAddRelationshipRequest")
+            {
+                Console.WriteLine("WTF");
+            }
             IsJsonSerializable = IsAssignableFrom(TransformationContext.JsonSerializeableType);
             if (typeSymbol != null)
             {

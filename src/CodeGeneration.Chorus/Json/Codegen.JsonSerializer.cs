@@ -33,6 +33,7 @@
             return SwitchExpressionArm(ConstantPattern(constValue), newObjectExpression);
         }
 
+
         private async Task<MemberDeclarationSyntax> CreateJsonSerializerForinterfaceAsync()
         {
 
@@ -84,6 +85,7 @@
                     Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"Invalid {abstractMetaType.AbstractJsonProperty} specified."))))));
 
             var allDescendents = await metaType.GetRecursiveDescendentsAsync();
+
             var validDescendents = allDescendents.Where(d => d.TypeSymbol.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, abstractMetaType.AbstractAttribute)));
             var arms = validDescendents.Select(t => GetArm(t, abstractMetaType.AbstractAttribute)).ToList();
             arms.Add(defaultThrow);

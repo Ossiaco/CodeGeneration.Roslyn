@@ -66,21 +66,25 @@ namespace CodeGeneration.Chorus.Json
 
             innerMembers.AddRange(await JsonCtorAsync(hasAncestor, isSealed));
 
-            if (context.ResponseMessageType != null && SymbolEqualityComparer.Default.Equals(context.ResponseMessageType, this.metaType.TypeSymbol))
+            if (SymbolEqualityComparer.Default.Equals(context.ResponseMessageType, this.metaType.TypeSymbol))
             {
                 innerMembers.AddRange(await ResponseMessageSyntax.AbstractResponseCtorAsync(this.metaType));
             }
-            else if (context.ResponseMessageType != null && SymbolEqualityComparer.Default.Equals(context.ResponseMessageType, directAncestor.TypeSymbol))
+            else if (SymbolEqualityComparer.Default.Equals(context.ResponseMessageType, directAncestor.TypeSymbol))
             {
                 innerMembers.AddRange(await ResponseCtorAsync());
             }
-            else if (context.MessageType != null && SymbolEqualityComparer.Default.Equals(context.MessageType, this.metaType.TypeSymbol))
+            else if (SymbolEqualityComparer.Default.Equals(context.MessageType, this.metaType.TypeSymbol))
             {
                 innerMembers.Add(MessageSyntax.AbstractMessageCtor(metaType));
             }
-            else if (context.MessageType != null && this.metaType.IsAssignableFrom(context.MessageType))
+            else if (this.metaType.IsAssignableFrom(context.MessageType))
             {
                 innerMembers.Add(await MessageCtorAsync(directAncestor));
+            }
+            else if (this.metaType.IsAssignableFrom(context.VertexRequestType))
+            {
+                // TODO: Add copy constructor
             }
             else
             {

@@ -45,6 +45,8 @@ namespace CodeGeneration.Chorus
         int RootLength { get; }
 
         INamedTypeSymbol VertexType { get; }
+
+        INamedTypeSymbol VertexRequestType { get; }
     }
 
     /// <summary>
@@ -74,6 +76,7 @@ namespace CodeGeneration.Chorus
         private INamedTypeSymbol? responseMessageType;
         private int rootLength;
         private INamedTypeSymbol? vertexType;
+        private INamedTypeSymbol? vertexRequestType;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CompilationGenerator"/> class.
@@ -112,6 +115,8 @@ namespace CodeGeneration.Chorus
         int ITransformationContext.RootLength => this.rootLength;
 
         INamedTypeSymbol ITransformationContext.VertexType => this.vertexType ?? throw new ArgumentNullException(nameof(this.vertexType));
+
+        INamedTypeSymbol ITransformationContext.VertexRequestType => this.vertexRequestType ?? throw new ArgumentNullException(nameof(this.vertexRequestType));
 
         /// <summary>
         /// Gets the AdditionalWrittenFiles
@@ -177,7 +182,8 @@ namespace CodeGeneration.Chorus
             iEquatableType = Guard.Verify.IsNotNull(compilation.GetTypeByMetadataName(Guard.Verify.IsNotEmptyOrNull(typeof(IEquatable<>).FullName, nameof(Type.FullName))), nameof(INamedTypeSymbol));
             responseMessageType = compilation.GetTypeByMetadataName("Chorus.Messaging.IResponseMessage");
             messageType = compilation.GetTypeByMetadataName("Chorus.Messaging.IMessage");
-            vertexType = compilation.GetTypeByMetadataName("Chorus.Azure.Cosmos.IVertex");
+            vertexType = compilation.GetTypeByMetadataName("CChorus.Graph.Vertices.IVertex");
+            vertexRequestType = compilation.GetTypeByMetadataName("Chorus.Graph.Vertices.IVertexRequest");
             intrinsicSymbols = GetIntrinsicSymbols(compilation);
 
             var generatedFiles = this.generatedFiles.ToBuilder();
@@ -508,7 +514,7 @@ namespace CodeGeneration.Chorus
             var retriesLeft = 3;
 
             var lastWritten = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
-            if (outputFilePath.Contains("IActorRoleAssignment.generated.cs"))
+            if (outputFilePath.Contains("IAddRelationshipRequest.generated.cs"))
             {
                 Console.WriteLine("WTF");
             }
