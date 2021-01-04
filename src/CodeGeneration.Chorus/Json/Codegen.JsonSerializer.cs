@@ -11,6 +11,19 @@
 
     internal partial class CodeGen
     {
+        private static readonly AttributeListSyntax AggressiveInlining = AttributeList(
+            SingletonSeparatedList(
+                Attribute(
+                    IdentifierName("MethodImpl"))
+                .WithArgumentList(
+                    AttributeArgumentList(
+                        SingletonSeparatedList(
+                            AttributeArgument(
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    IdentifierName("MethodImplOptions"),
+                                    IdentifierName("AggressiveInlining"))))))));
+
         public static ExpressionSyntax FormatValue(TypedConstant constant)
         {
             //TODO: add hex formatting
@@ -130,7 +143,8 @@
                     .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                     .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter })))
                     .WithExpressionBody(ArrowExpressionClause(newObjectExpression))
-                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+                    .WithAttributeLists(List(new[] { AggressiveInlining })));
             }
 
             InvocationExpressionSyntax callGetObject(string toCall) => InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _elementName, IdentifierName(toCall))
@@ -143,13 +157,15 @@
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter, _propertyNameParameter })))
                 .WithExpressionBody(ArrowExpressionClause(callGetObject("GetObject")))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+                .WithAttributeLists(List(new[] { AggressiveInlining })));
 
             result.Add(MethodDeclaration(NullableType(interfaceType), tryGetMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter, _propertyNameParameter })))
                 .WithExpressionBody(ArrowExpressionClause(callGetObject("TryGetObject")))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+                .WithAttributeLists(List(new[] { AggressiveInlining })));
 
             var getObjectArry = InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, _elementName, IdentifierName("GetObjectArray"))
                .WithOperatorToken(Token(SyntaxKind.DotToken)))
@@ -161,19 +177,22 @@
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter })))
                 .WithExpressionBody(ArrowExpressionClause(getObjectArry))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+                .WithAttributeLists(List(new[] { AggressiveInlining })));
 
             result.Add(MethodDeclaration(interfaceArrayType, getArrayMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter, _propertyNameParameter })))
                 .WithExpressionBody(ArrowExpressionClause(callGetObject("GetObjectArray")))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+                .WithAttributeLists(List(new[] { AggressiveInlining })));
 
             result.Add(MethodDeclaration(NullableType(interfaceArrayType), tryGetArrayMethodName)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
                 .WithParameterList(ParameterList(Syntax.JoinSyntaxNodes(SyntaxKind.CommaToken, new[] { _jsonElementThisParameter, _propertyNameParameter })))
                 .WithExpressionBody(ArrowExpressionClause(callGetObject("TryGetObjectArray")))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+                .WithAttributeLists(List(new[] { AggressiveInlining })));
 
             return result;
         }

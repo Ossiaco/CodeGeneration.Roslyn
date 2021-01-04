@@ -15,7 +15,7 @@ namespace CodeGeneration.Chorus
     {
         private readonly INamedTypeSymbol symbol;
         private ImmutableHashSet<INamedTypeSymbol> _values = ImmutableHashSet<INamedTypeSymbol>.Empty.WithComparer(SymbolEqualityComparer.Default);
-        private ReaderWriterLockSlim _entryLock = new ReaderWriterLockSlim();
+        private ReaderWriterLockSlim _entryLock = new();
 
 
         private GetAllDescendentsSymbolsVisitor(INamedTypeSymbol symbol)

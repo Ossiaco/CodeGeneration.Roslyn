@@ -58,16 +58,15 @@ namespace CodeGeneration.Chorus
 
         private const int ProcessCannotAccessFileHR = unchecked((int)0x80070020);
 
-        private static readonly HashSet<string> AllowedAssemblyExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".dll" };
-        private readonly List<string> additionalWrittenFiles = new List<string>();
-        private readonly Dictionary<string, Assembly> assembliesByPath = new Dictionary<string, Assembly>();
-        private readonly HashSet<string> directoriesWithResolver = new HashSet<string>();
-        private readonly List<string> loadedAssemblies = new List<string>();
+        private static readonly HashSet<string> AllowedAssemblyExtensions = new(StringComparer.OrdinalIgnoreCase) { ".dll" };
+        private readonly List<string> additionalWrittenFiles = new();
+        private readonly Dictionary<string, Assembly> assembliesByPath = new();
+        private readonly HashSet<string> directoriesWithResolver = new();
+        private readonly List<string> loadedAssemblies = new();
         private ImmutableDictionary<INamedTypeSymbol, MetaType>? allNamedTypeSymbols;
         private CompositeCompilationAssemblyResolver assemblyResolver;
         private CSharpCompilation? compilation;
         private DependencyContext dependencyContext;
-        private ImmutableHashSet<string> generatedFiles = ImmutableHashSet<string>.Empty;
         private INamedTypeSymbol? iEquatableType;
         private ImmutableHashSet<INamedTypeSymbol>? intrinsicSymbols;
         private INamedTypeSymbol? jsonSerializeableType;
@@ -136,7 +135,7 @@ namespace CodeGeneration.Chorus
         /// <summary>
         /// Gets the GeneratedFiles
         /// </summary>
-        public ImmutableHashSet<string> GeneratedFiles => generatedFiles;
+        public ImmutableHashSet<string> GeneratedFiles { get; private set; } = ImmutableHashSet<string>.Empty;
 
         /// <summary>
         /// Gets or sets the GeneratorAssemblySearchPaths
@@ -145,6 +144,7 @@ namespace CodeGeneration.Chorus
 
         /// <summary>
         /// Gets or sets the IntermediateOutputDirectory
+        /// Doing something else.
         /// </summary>
         public string? IntermediateOutputDirectory { get; set; }
 
@@ -186,7 +186,7 @@ namespace CodeGeneration.Chorus
             vertexRequestType = compilation.GetTypeByMetadataName("Chorus.Graph.Vertices.IVertexRequest");
             intrinsicSymbols = GetIntrinsicSymbols(compilation);
 
-            var generatedFiles = this.generatedFiles.ToBuilder();
+            var generatedFiles = this.GeneratedFiles.ToBuilder();
 
             var generatorAssemblyInputsFile = Path.Combine(intermediateOutputDirectory, InputAssembliesIntermediateOutputFileName);
 
@@ -232,7 +232,7 @@ namespace CodeGeneration.Chorus
                 throw new AggregateException(fileFailures);
             }
 
-            this.generatedFiles = generatedFiles.ToImmutable();
+            this.GeneratedFiles = generatedFiles.ToImmutable();
 
         }
 
@@ -514,10 +514,6 @@ namespace CodeGeneration.Chorus
             var retriesLeft = 3;
 
             var lastWritten = File.Exists(outputFilePath) ? File.GetLastWriteTime(outputFilePath) : DateTime.MinValue;
-            if (outputFilePath.Contains("IAddRelationshipRequest.generated.cs"))
-            {
-                Console.WriteLine("WTF");
-            }
             var hasChanges = assembliesLastModified > lastWritten || (await HasChangedAsync(metaTypes));
             if (hasChanges)
             {
@@ -551,7 +547,7 @@ namespace CodeGeneration.Chorus
                 }
                 while (true);
             }
-            return File.Exists(outputFilePath) && (new FileInfo(outputFilePath)).Length > 0;
+            return File.Exists(outputFilePath) && new FileInfo(outputFilePath).Length > 0;
         }
     }
 }

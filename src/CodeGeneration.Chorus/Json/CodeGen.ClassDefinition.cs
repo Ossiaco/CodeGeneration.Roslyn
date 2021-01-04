@@ -60,7 +60,7 @@ namespace CodeGeneration.Chorus.Json
 
             var abstractImplementations = await this.metaType.GetPropertyOverridesAsync();
             var isAbstract = await this.metaType.IsAbstractTypeAsync();
-            var isSealed = !isAbstract && (partialImplementation?.TypeSymbol.IsSealed ?? false || !(await this.metaType.HasDescendentsAsync()));
+            var isSealed = !isAbstract && (partialImplementation?.TypeSymbol.IsSealed ?? false || !await this.metaType.HasDescendentsAsync());
             var localProperties = await this.metaType.GetLocalPropertiesAsync();
             var directAncestor = await this.metaType.GetDirectAncestorAsync();
 
@@ -138,7 +138,6 @@ namespace CodeGeneration.Chorus.Json
                  .WithMembers(outerMembers);
 
             return members;
-
         }
 
         private TupleExpressionSyntax GetAsTuple(ImmutableHashSet<MetaProperty> properties, ExpressionSyntax? expreession = null)

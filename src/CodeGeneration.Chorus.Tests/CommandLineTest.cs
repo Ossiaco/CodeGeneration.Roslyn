@@ -74,7 +74,7 @@
 
             if (outputDirectory.EndsWith("\\"))
             {
-                outputDirectory = outputDirectory.Substring(0, outputDirectory.Length - 1);
+                outputDirectory = outputDirectory[0..^1];
             }
 
             compile = Sanitize(workingDirectory, compile);

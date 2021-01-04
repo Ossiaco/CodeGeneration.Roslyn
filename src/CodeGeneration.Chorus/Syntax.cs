@@ -49,7 +49,7 @@ namespace CodeGeneration.Chorus
             var context = metaType.TransformationContext;
             if (value.BaseList is BaseListSyntax baselist && baselist.Types[0].Type is IdentifierNameSyntax nameSyntax)
             {
-                var typeSymbol = ((INamedTypeSymbol?)model.GetTypeInfo(nameSyntax).Type);
+                var typeSymbol = (INamedTypeSymbol?)model.GetTypeInfo(nameSyntax).Type;
                 if (typeSymbol != null && !SymbolEqualityComparer.Default.Equals(typeSymbol, context.JsonSerializeableType))
                 {
                     SimpleNameSyntax leafName = IdentifierName(typeSymbol.Name[1..]);

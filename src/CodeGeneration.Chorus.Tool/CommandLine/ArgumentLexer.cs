@@ -114,7 +114,7 @@ namespace CodeGeneration.Chorus.Tool.CommandLine
                 }
                 else
                 {
-                    var fileName = arg.Substring(1);
+                    var fileName = arg[1..];
 
                     var responseFileArguments = responseFileReader(fileName);
 
@@ -166,7 +166,7 @@ namespace CodeGeneration.Chorus.Tool.CommandLine
         {
             if (text.StartsWith(prefix))
             {
-                remainder = text.Substring(prefix.Length);
+                remainder = text[prefix.Length..];
                 modifier = prefix;
                 return true;
             }
@@ -184,7 +184,7 @@ namespace CodeGeneration.Chorus.Tool.CommandLine
                 if (ch == ':' || ch == '=')
                 {
                     name = text.Substring(0, idx);
-                    value = text.Substring(idx + 1);
+                    value = text[(idx + 1)..];
                     return true;
                 }
             }

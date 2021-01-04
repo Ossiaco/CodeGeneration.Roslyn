@@ -36,7 +36,7 @@
 	</PropertyGroup>
 
 	<PropertyGroup Label="Build Specific deppendencies">
-		<MicrosoftBuildPackageVersion>16.6.0</MicrosoftBuildPackageVersion>
+		<MicrosoftBuildPackageVersion>16.8.0</MicrosoftBuildPackageVersion>
 		<MicrosoftVisualStudioValidationPackageVersion>15.5.31</MicrosoftVisualStudioValidationPackageVersion>
 		<MicrosoftExtensionsDependencyModelPackageVersion>3.0.0</MicrosoftExtensionsDependencyModelPackageVersion>
 		<MicrosoftBuildFrameworkPackageVersion>15.7.179</MicrosoftBuildFrameworkPackageVersion>

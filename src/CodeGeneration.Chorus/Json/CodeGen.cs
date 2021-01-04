@@ -26,12 +26,12 @@
             this.context = transformationContext;
         }
 
-        private static DiagnosticDescriptor NotSupportedDescriptor => new DiagnosticDescriptor("OCC001",
+        private static DiagnosticDescriptor NotSupportedDescriptor => new("OCC001",
                     new LocalizableResourceString(nameof(DiagnosticStrings.OCC001), DiagnosticStrings.ResourceManager, typeof(DiagnosticStrings)),
                     new LocalizableResourceString(nameof(DiagnosticStrings.OCC001), DiagnosticStrings.ResourceManager, typeof(DiagnosticStrings)),
                     "Design", DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
-        private static DiagnosticDescriptor UnexpectedDescriptor => new DiagnosticDescriptor("OCC002",
+        private static DiagnosticDescriptor UnexpectedDescriptor => new("OCC002",
                     new LocalizableResourceString(nameof(DiagnosticStrings.OCC002), DiagnosticStrings.ResourceManager, typeof(DiagnosticStrings)),
                     new LocalizableResourceString(nameof(DiagnosticStrings.OCC002), DiagnosticStrings.ResourceManager, typeof(DiagnosticStrings)),
                     "Design", DiagnosticSeverity.Error, isEnabledByDefault: true);

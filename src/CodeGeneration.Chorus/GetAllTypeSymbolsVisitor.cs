@@ -13,7 +13,7 @@ namespace CodeGeneration.Chorus
     internal class GetAllTypeSymbolsVisitor : SymbolVisitor
     {
         private ImmutableHashSet<INamedTypeSymbol> _values = ImmutableHashSet<INamedTypeSymbol>.Empty.WithComparer(SymbolEqualityComparer.Default);
-        private ReaderWriterLockSlim _entryLock = new ReaderWriterLockSlim();
+        private ReaderWriterLockSlim _entryLock = new();
 
 
         private GetAllTypeSymbolsVisitor()

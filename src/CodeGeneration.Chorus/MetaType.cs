@@ -62,7 +62,7 @@ namespace CodeGeneration.Chorus
                 var field = codeGenAttribute.NamedArguments.FirstOrDefault(v => v.Key == nameof(GenerateClassAttribute.AbstractField)).Value;
                 AbstractAttribute = (INamedTypeSymbol)attribute.Value;
                 AbstractJsonProperty = (string)field.Value;
-                HasAbstractJsonProperty = (AbstractAttribute != null && AbstractJsonProperty != null);
+                HasAbstractJsonProperty = AbstractAttribute != null && AbstractJsonProperty != null;
             }
             else
             {
@@ -316,7 +316,7 @@ namespace CodeGeneration.Chorus
             }
 
             var directAncestor = await GetDirectAncestorAsync();
-            return _inheritedProperties = (await directAncestor.GetAllPropertiesAsync());
+            return _inheritedProperties = await directAncestor.GetAllPropertiesAsync();
         }
 
         public async Task<ImmutableHashSet<MetaProperty>> GetLocalPropertiesAsync()
